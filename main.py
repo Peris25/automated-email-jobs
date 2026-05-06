@@ -64,6 +64,10 @@ if os.path.exists(PORTAL_DIR) and os.path.exists(os.path.join(PORTAL_DIR, "index
     def serve_portal():
         return FileResponse(os.path.join(PORTAL_DIR, "index.html"))
 
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
 
 if __name__ == "__main__":
     import uvicorn
