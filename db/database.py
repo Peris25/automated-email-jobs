@@ -1,98 +1,104 @@
 """
-Database — async PostgreSQL via asyncpg + SQLAlchemy Core.
-On Render: set DATABASE_URL in environment variables.
-Locally:   can use SQLite for quick dev (set DB_DRIVER=sqlite).
+Database — SQLAlchemy async engine.
+Locally:  SQLite via aiosqlite  (no config needed)
+Render:   PostgreSQL via asyncpg (DATABASE_URL set automatically)
 """
 
 import os
-import databases
-import sqlalchemy
+import sqlalchemy as sa
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import (
-    MetaData, Table, Column, Integer, Text, Date,
-    DateTime, Boolean, func, ForeignKey
+    MetaData, Table, Column, Integer, Text,
+    Boolean, ForeignKey
 )
 
-# ── Connection ────────────────────────────────────────────────
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite+aiosqlite:///./solvit_dev.db"   # fallback for local dev
-)
+# ── Connection URL ────────────────────────────────────────────
+_raw_url = os.getenv("DATABASE_URL", "")
 
-# Render gives postgres:// but SQLAlchemy needs postgresql://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-elif DATABASE_URL.startswith("postgresql://") and "asyncpg" not in DATABASE_URL:
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+if _raw_url.startswith("postgres://"):
+    DATABASE_URL = _raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif _raw_url.startswith("postgresql://"):
+    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = "sqlite+aiosqlite:///./solvit_dev.db"
 
-database = databases.Database(DATABASE_URL)
-metadata = MetaData()
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+
+connect_args = {"check_same_thread": False} if IS_SQLITE else {}
+engine = create_async_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 # ── Tables ────────────────────────────────────────────────────
+metadata = MetaData()
 
 jobs = Table(
     "jobs", metadata,
-    Column("id",                   Text,    primary_key=True),
-    Column("vehicle_reg",          Text,    nullable=False),
-    Column("client_name",          Text,    nullable=False),
-    Column("client_email",         Text,    nullable=False),
-    Column("client_phone",         Text),
-    Column("phase",                Integer, nullable=False, default=1),
-    Column("reason",               Text),           # not_picking | unreachable | not_ready
-    Column("initiated_date",       Text),
-    Column("scheduled_date",       Text),           # ISO datetime string or null
-    Column("solver_name",          Text),
-    Column("solver_phone",         Text),
-    Column("emails_sent",          Integer, default=0),
-    Column("last_email_sent_at",   Text),
-    Column("status",               Text,    default="awaiting_reply"),   # awaiting_reply | replied
-    Column("job_status",           Text,    default="pending"),          # pending | scheduled | completed | cancelled
-    Column("source",               Text,    default="csv"),              # csv | zoho
-    Column("zoho_row_id",          Text),           # for dedup when syncing Zoho
-    Column("flagged_manual",       Boolean, default=False),
-    Column("reason_logged_at",     Text),           # timestamp when reason was set — drives timing rules
-    Column("created_at",           Text,    default=func.now()),
-    Column("updated_at",           Text,    default=func.now()),
+    Column("id",                  Text,    primary_key=True),
+    Column("vehicle_reg",         Text,    nullable=False),
+    Column("client_name",         Text,    nullable=False),
+    Column("client_email",        Text,    nullable=False),
+    Column("client_phone",        Text),
+    Column("phase",               Integer, server_default="1"),
+    Column("reason",              Text),
+    Column("initiated_date",      Text),
+    Column("scheduled_date",      Text),
+    Column("solver_name",         Text),
+    Column("solver_phone",        Text),
+    Column("emails_sent",         Integer, server_default="0"),
+    Column("last_email_sent_at",  Text),
+    Column("status",              Text,    server_default="awaiting_reply"),
+    Column("job_status",          Text,    server_default="pending"),
+    Column("source",              Text,    server_default="csv"),
+    Column("zoho_row_id",         Text),
+    Column("flagged_manual",      Boolean, server_default="0"),
+    Column("reason_logged_at",    Text),
+    Column("created_at",          Text),
+    Column("updated_at",          Text),
 )
 
 email_log = Table(
     "email_log", metadata,
-    Column("id",               Integer, primary_key=True, autoincrement=True),
-    Column("job_id",           Text,    ForeignKey("jobs.id"), nullable=False),
-    Column("sent_at",          Text,    default=func.now()),
-    Column("template_key",     Text,    nullable=False),   # phase1 | phase2 | followup
-    Column("subject",          Text,    nullable=False),
-    Column("to_email",         Text,    nullable=False),
-    Column("graph_message_id", Text),                      # from MS Graph — used for reply threading
-    Column("internet_message_id", Text),                   # RFC Message-ID header for inbox matching
-    Column("delivery_status",  Text,    default="sent"),   # sent | delivered | opened | replied | bounced
-    Column("reply_at",         Text),
+    Column("id",                   Integer, primary_key=True, autoincrement=True),
+    Column("job_id",               Text,    ForeignKey("jobs.id"), nullable=False),
+    Column("sent_at",              Text),
+    Column("template_key",         Text,    nullable=False),
+    Column("subject",              Text,    nullable=False),
+    Column("to_email",             Text,    nullable=False),
+    Column("graph_message_id",     Text),
+    Column("internet_message_id",  Text),
+    Column("delivery_status",      Text,    server_default="sent"),
+    Column("reply_at",             Text),
 )
 
-# ── Engine (for table creation only) ─────────────────────────
-SYNC_URL = DATABASE_URL.replace("+asyncpg", "").replace("+aiosqlite", "")
-engine = sqlalchemy.create_engine(SYNC_URL.replace("postgresql+", "postgresql+psycopg2+").replace("postgresql+psycopg2+asyncpg", ""), connect_args={"check_same_thread": False} if "sqlite" in SYNC_URL else {})
 
-# Use a simpler sync engine approach
-if "sqlite" in DATABASE_URL:
-    SYNC_URL_CLEAN = DATABASE_URL.replace("+aiosqlite", "")
-else:
-    SYNC_URL_CLEAN = DATABASE_URL.replace("+asyncpg", "")
+# ── Thin DB wrapper ───────────────────────────────────────────
+class _DB:
+    """Mimics the databases library interface so api routes need no changes."""
 
-try:
-    sync_engine = sqlalchemy.create_engine(
-        SYNC_URL_CLEAN,
-        connect_args={"check_same_thread": False} if "sqlite" in SYNC_URL_CLEAN else {}
-    )
-except Exception:
-    sync_engine = None
+    async def execute(self, query, values: dict | None = None):
+        async with engine.begin() as conn:
+            if values:
+                await conn.execute(query, values)
+            else:
+                await conn.execute(query)
+
+    async def fetch_all(self, query):
+        async with engine.connect() as conn:
+            result = await conn.execute(query)
+            return result.fetchall()
+
+    async def fetch_one(self, query):
+        async with engine.connect() as conn:
+            result = await conn.execute(query)
+            return result.fetchone()
+
+    async def connect(self): pass
+    async def disconnect(self): pass
+
+
+database = _DB()
 
 
 async def init_db():
-    """Create tables if they don't exist, then connect the async DB pool."""
-    if sync_engine:
-        metadata.create_all(sync_engine)
-    await database.connect()
-
-
-async def close_db():
-    await database.disconnect()
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
