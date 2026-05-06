@@ -60,7 +60,7 @@ if os.path.exists(PORTAL_DIR) and os.path.exists(os.path.join(PORTAL_DIR, "index
     app.mount("/css", StaticFiles(directory=PORTAL_DIR), name="css")
     app.mount("/js",  StaticFiles(directory=PORTAL_DIR), name="js")
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def serve_portal():
         return FileResponse(os.path.join(PORTAL_DIR, "index.html"))
 
