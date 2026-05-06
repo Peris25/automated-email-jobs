@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Solvit Valuation Communication Portal API",
+    title="Solvit Automated Communication Portal",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -53,9 +53,12 @@ app.include_router(upload.router,    prefix="/api/upload",    tags=["Upload"])
 app.include_router(zoho_sync.router, prefix="/api/zoho",      tags=["Zoho"])
 
 # ── Serve portal static files (same origin as API) ───────────
+# The portal's index.html references /css/styles.css and /js/app.js
+# so we mount the portal folder at both /css and /js explicitly.
 PORTAL_DIR = os.getenv("PORTAL_DIR", os.path.join(os.path.dirname(__file__), "portal"))
 if os.path.exists(PORTAL_DIR) and os.path.exists(os.path.join(PORTAL_DIR, "index.html")):
-    app.mount("/static", StaticFiles(directory=PORTAL_DIR), name="static")
+    app.mount("/css", StaticFiles(directory=PORTAL_DIR), name="css")
+    app.mount("/js",  StaticFiles(directory=PORTAL_DIR), name="js")
 
     @app.get("/", include_in_schema=False)
     def serve_portal():
