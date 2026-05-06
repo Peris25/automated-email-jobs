@@ -1,0 +1,59 @@
+# render.yaml — deploy everything to Render with one click
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: solvit-valuation-api
+    env: python
+    plan: free                        # upgrade to starter ($7/mo) for always-on
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/dashboard/kpis
+    envVars:
+      # ── Database (auto-filled by Render when you link the DB below) ──
+      - key: DATABASE_URL
+        fromDatabase:
+          name: solvit-db
+          property: connectionString
+
+      # ── Microsoft Graph ──────────────────────────────────────────────
+      - key: MS_TENANT_ID
+        sync: false          # set manually in Render dashboard
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
+      - key: MS_SENDER_UPN
+        value: cs-team@solvit.co.ke
+
+      # ── Zoho Analytics (optional — set when ready) ───────────────────
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_REFRESH_TOKEN
+        sync: false
+      - key: ZOHO_WORKSPACE_ID
+        sync: false
+      - key: ZOHO_VIEW_ID
+        sync: false
+      - key: ZOHO_DC
+        value: com            # change to "eu" / "in" / "au" if your Zoho is on a different DC
+
+      # ── App config ───────────────────────────────────────────────────
+      - key: DATA_SOURCE
+        value: csv            # change to "zoho" when Zoho is configured
+      - key: JWT_SECRET
+        generateValue: true   # Render auto-generates a secure random string
+      - key: ADMIN_EMAIL
+        value: admin@solvit.co.ke
+      - key: ADMIN_PASSWORD
+        sync: false           # set in Render dashboard — do not hardcode
+      - key: ALLOWED_ORIGINS
+        value: "*"            # tighten to your portal domain in production
+
+databases:
+  - name: solvit-db
+    plan: free                # 90-day free PostgreSQL on Render
+    databaseName: solvit
+    user: solvit_user

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valuation Communication Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- LOGIN VIEW (shown first) -->
+  <div id="login-view" class="login-view">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">VC</div>
+        <h1>Valuation Communication Portal</h1>
+        <p>Sign in to monitor automated client follow-ups</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <label>
+          <span>Email</span>
+          <input type="email" id="login-email" placeholder="you@valuationco.co.ke" value="am.lead@valuationco.co.ke" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" id="login-password" placeholder="••••••••" value="demo" required>
+        </label>
+        <button type="submit" class="btn-primary">Sign in</button>
+        <p class="login-hint">Demo mode — any credentials work. Backend authentication to be wired by your developer.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="app" style="display: none;">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">VC</div>
+        <div>
+          <p class="brand-name">Valuation Co.</p>
+          <p class="brand-sub">Communication portal</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="6" height="8" rx="1"/><rect x="3" y="13" width="6" height="4" rx="1"/><rect x="11" y="3" width="6" height="4" rx="1"/><rect x="11" y="9" width="6" height="8" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="jobs">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+          <span>Pending jobs</span>
+          <span class="nav-count" id="nav-jobs-count">47</span>
+        </button>
+        <button class="nav-item" data-view="activity">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10l4-4 3 3 7-7"/><path d="M14 2h3v3"/></svg>
+          <span>Email activity</span>
+        </button>
+        <button class="nav-item" data-view="rules">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="3"/><path d="M10 1v3M10 16v3M19 10h-3M4 10H1M16.36 3.64l-2.12 2.12M5.76 14.24l-2.12 2.12M16.36 16.36l-2.12-2.12M5.76 5.76L3.64 3.64"/></svg>
+          <span>Rules & templates</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="2"/><path d="M16 10c0 .5-.1 1-.2 1.5l1.7 1.3-2 3.5-2-.8c-.7.6-1.5 1-2.4 1.3L11 18h-4l-.4-2.2c-.9-.3-1.7-.7-2.4-1.3l-2 .8-2-3.5 1.7-1.3c-.1-.5-.2-1-.2-1.5s.1-1 .2-1.5L0 6.2l2-3.5 2 .8c.7-.6 1.5-1 2.4-1.3L7 0h4l.4 2.2c.9.3 1.7.7 2.4 1.3l2-.8 2 3.5-1.7 1.3c.1.5.2 1 .2 1.5z"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <div>
+            <p>System running</p>
+            <p class="status-sub">Last sync 4 min ago</p>
+          </div>
+        </div>
+        <div class="user-card">
+          <div class="user-avatar">AM</div>
+          <div>
+            <p>AM Lead</p>
+            <p class="user-sub">am.lead@valuationco.co.ke</p>
+          </div>
+          <button class="user-logout" id="logout-btn" title="Sign out">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3v12h3M11 5l3 3-3 3M14 8H6"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="view active">
+        <header class="view-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Real-time overview of automated client communications</p>
+          </div>
+          <div class="header-meta">
+            <span id="current-date"></span>
+          </div>
+        </header>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <p class="kpi-label">Pending jobs</p>
+            <p class="kpi-value">47</p>
+            <p class="kpi-sub">28 phase 1 · 19 phase 2</p>
+          </div>
+          <div class="kpi-card">
+            <p class="kpi-label">Emails sent today</p>
+            <p class="kpi-value">34</p>
+            <p class="kpi-sub">12 first · 22 follow-up</p>
+          </div>
+          <div class="kpi-card">
+            <p class="kpi-label">Reply rate (7d)</p>
+            <p class="kpi-value">32<span class="kpi-unit">%</span></p>
+            <p class="kpi-sub kpi-positive">↑ 8 pts vs prev week</p>
+          </div>
+          <div class="kpi-card">
+            <p class="kpi-label">Resolved this week</p>
+            <p class="kpi-value">23</p>
+            <p class="kpi-sub kpi-positive">↑ from 14 last week</p>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Email volume</h3>
+              <span class="panel-meta">Last 7 days</span>
+            </div>
+            <div class="chart-wrap" style="height: 240px;">
+              <canvas id="volumeChart"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Pending by reason</h3>
+              <span class="panel-meta">Live</span>
+            </div>
+            <div class="chart-wrap" style="height: 240px;">
+              <canvas id="reasonChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Live activity feed</h3>
+            <span class="panel-meta">Auto-refreshes every 30s</span>
+          </div>
+          <div id="liveFeed" class="feed"></div>
+        </div>
+      </section>
+
+      <!-- PENDING JOBS -->
+      <section id="view-jobs" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Pending jobs</h1>
+            <p>Jobs flagged with a reason code awaiting client response</p>
+          </div>
+        </header>
+
+        <div class="filter-bar">
+          <input type="text" id="jobSearch" placeholder="Search by registration, client, or solver...">
+          <select id="phaseFilter">
+            <option value="all">All phases</option>
+            <option value="1">Phase 1 — scheduling</option>
+            <option value="2">Phase 2 — confirmation</option>
+          </select>
+          <select id="reasonFilter">
+            <option value="all">All reasons</option>
+            <option value="not_picking">Not picking</option>
+            <option value="unreachable">Unreachable</option>
+            <option value="not_ready">Not ready</option>
+          </select>
+          <select id="statusFilter">
+            <option value="all">All statuses</option>
+            <option value="awaiting_reply">Awaiting reply</option>
+            <option value="replied">Replied</option>
+          </select>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head">
+            <div>Vehicle</div>
+            <div>Client</div>
+            <div>Phase</div>
+            <div>Reason</div>
+            <div>Last contact</div>
+            <div>Solver / Initiated</div>
+            <div>Status</div>
+          </div>
+          <div id="jobsList" class="table-body"></div>
+        </div>
+      </section>
+
+      <!-- EMAIL ACTIVITY -->
+      <section id="view-activity" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Email activity</h1>
+            <p>Audit log of every email dispatched by the system</p>
+          </div>
+        </header>
+
+        <div class="kpi-grid kpi-grid-3">
+          <div class="kpi-card">
+            <p class="kpi-label">Sent (7 days)</p>
+            <p class="kpi-value">187</p>
+          </div>
+          <div class="kpi-card">
+            <p class="kpi-label">Delivered</p>
+            <p class="kpi-value">182</p>
+            <p class="kpi-sub">97.3% delivery rate</p>
+          </div>
+          <div class="kpi-card">
+            <p class="kpi-label">Opened</p>
+            <p class="kpi-value">124</p>
+            <p class="kpi-sub">68.1% open rate</p>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-head table-head-activity">
+            <div>Sent at</div>
+            <div>Client</div>
+            <div>Vehicle</div>
+            <div>Type</div>
+            <div>Phase</div>
+            <div>Status</div>
+          </div>
+          <div id="activityList" class="table-body"></div>
+        </div>
+      </section>
+
+      <!-- RULES & TEMPLATES -->
+      <section id="view-rules" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Rules & templates</h1>
+            <p>Configure when emails are sent and what they say</p>
+          </div>
+        </header>
+
+        <div class="info-banner">
+          These rules run automatically. The system queries Zoho Analytics every 15 minutes and dispatches emails through Outlook based on the conditions below.
+        </div>
+
+        <h2 class="section-heading">Trigger rules</h2>
+
+        <div class="rule-list">
+          <div class="rule-card">
+            <div class="rule-head">
+              <span class="reason-badge reason-not-picking">Not picking</span>
+              <h4>Same-day batch · 5:00 PM</h4>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <p>Email sent at 5:00 PM the day the reason was logged. Tone: "we tried to reach you, please get in touch." Follow-up after 3 days if still pending.</p>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-head">
+              <span class="reason-badge reason-unreachable">Unreachable</span>
+              <h4>Immediate · within 1 hour</h4>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <p>Email sent within 1 hour of the reason being logged. Phone may be unavailable, so email is the priority channel. Follow-up after 3 days.</p>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-head">
+              <span class="reason-badge reason-not-ready">Not ready</span>
+              <h4>Next-morning batch · 9:00 AM</h4>
+              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <p>Email sent at 9:00 AM the next day. Soft tone — client said wait. Follow-up after 3 days with a "still need this?" message.</p>
+          </div>
+        </div>
+
+        <h2 class="section-heading">Email templates</h2>
+
+        <div class="template-tabs">
+          <button class="template-btn active" data-template="phase1">Phase 1 — AM Team</button>
+          <button class="template-btn" data-template="phase2">Phase 2 — Solver</button>
+          <button class="template-btn" data-template="followup">3-day follow-up</button>
+        </div>
+
+        <div id="templatePreview" class="template-preview"></div>
+
+        <h2 class="section-heading">Integration status</h2>
+
+        <div class="integration-grid">
+          <div class="integration-card">
+            <div class="integration-icon zoho">Z</div>
+            <div class="integration-body">
+              <p class="integration-name">Zoho Analytics</p>
+              <p class="integration-status status-ok">Connected · Last sync 4 min ago</p>
+              <p class="integration-detail">Workspace: <code>valuation_ops</code> · View: <code>pending_jobs_v2</code></p>
+            </div>
+            <button class="btn-link">Configure</button>
+          </div>
+          <div class="integration-card">
+            <div class="integration-icon outlook">O</div>
+            <div class="integration-body">
+              <p class="integration-name">Outlook (Microsoft Graph)</p>
+              <p class="integration-status status-ok">Connected · Token valid for 47 days</p>
+              <p class="integration-detail">Sender: <code>scheduling@valuationco.co.ke</code></p>
+            </div>
+            <button class="btn-link">Configure</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="view-settings" class="view">
+        <header class="view-header">
+          <div>
+            <h1>Settings</h1>
+            <p>System configuration and user management</p>
+          </div>
+        </header>
+
+        <div class="settings-grid">
+          <div class="panel">
+            <div class="panel-header"><h3>Sync & dispatch</h3></div>
+            <div class="settings-list">
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Zoho sync interval</p>
+                  <p class="settings-help">How often the system pulls fresh data from Zoho Analytics</p>
+                </div>
+                <select><option>Every 15 minutes</option><option>Every 30 minutes</option><option>Every hour</option></select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Maximum emails per job</p>
+                  <p class="settings-help">After this, the job is flagged for manual handling</p>
+                </div>
+                <select><option>2 (recommended)</option><option>3</option><option>1</option></select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Follow-up window</p>
+                  <p class="settings-help">Days to wait before sending the second email</p>
+                </div>
+                <select><option>3 days</option><option>2 days</option><option>5 days</option></select>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Send window</p>
+                  <p class="settings-help">Restrict outbound emails to working hours</p>
+                </div>
+                <select><option>8:00 AM – 6:00 PM</option><option>24/7</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><h3>Notifications</h3></div>
+            <div class="settings-list">
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Daily summary email</p>
+                  <p class="settings-help">Sent to AM Team lead at 6:00 PM</p>
+                </div>
+                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Alert on delivery failures</p>
+                  <p class="settings-help">Notify when emails bounce or aren't delivered</p>
+                </div>
+                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <p class="settings-label">Alert on high reply volume</p>
+                  <p class="settings-help">Flag when replies exceed AM Team capacity</p>
+                </div>
+                <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JOB DETAIL MODAL -->
+  <div id="job-modal" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content" id="job-modal-content"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
