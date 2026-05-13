@@ -29,7 +29,7 @@
           <input type="password" id="login-password" placeholder="••••••••" value="demo" required>
         </label>
         <button type="submit" class="btn-primary">Sign in</button>
-        <p class="login-hint">Demo mode — any credentials work. Backend authentication to be wired by your developer.</p>
+        <p id="login-error" style="color:#B83434;font-size:13px;min-height:18px;"></p>
       </form>
     </div>
   </div>
@@ -110,23 +110,23 @@
         <div class="kpi-grid">
           <div class="kpi-card">
             <p class="kpi-label">Pending jobs</p>
-            <p class="kpi-value">47</p>
-            <p class="kpi-sub">28 phase 1 · 19 phase 2</p>
+            <p class="kpi-value" id="kpi-pending-total">—</p>
+            <p class="kpi-sub">Live from backend</p>
           </div>
           <div class="kpi-card">
             <p class="kpi-label">Emails sent today</p>
-            <p class="kpi-value">34</p>
-            <p class="kpi-sub">12 first · 22 follow-up</p>
+            <p class="kpi-value" id="kpi-emails-today">—</p>
+            <p class="kpi-sub">Real-time from backend</p>
           </div>
           <div class="kpi-card">
             <p class="kpi-label">Reply rate (7d)</p>
-            <p class="kpi-value">32<span class="kpi-unit">%</span></p>
-            <p class="kpi-sub kpi-positive">↑ 8 pts vs prev week</p>
+            <p class="kpi-value" id="kpi-reply-rate">—</p>
+            <p class="kpi-sub">7-day rolling average</p>
           </div>
           <div class="kpi-card">
             <p class="kpi-label">Resolved this week</p>
-            <p class="kpi-value">23</p>
-            <p class="kpi-sub kpi-positive">↑ from 14 last week</p>
+            <p class="kpi-value" id="kpi-resolved">—</p>
+            <p class="kpi-sub">Jobs completed or scheduled</p>
           </div>
         </div>
 
@@ -303,16 +303,16 @@
             <div class="integration-icon zoho">Z</div>
             <div class="integration-body">
               <p class="integration-name">Zoho Analytics</p>
-              <p class="integration-status status-ok">Connected · Last sync 4 min ago</p>
-              <p class="integration-detail">Workspace: <code>valuation_ops</code> · View: <code>pending_jobs_v2</code></p>
+              <p class="integration-status" id="integration-zoho-status">Checking…</p>
+              <p class="integration-detail" id="integration-data-source">—</p>
             </div>
             <button class="btn-link">Configure</button>
           </div>
           <div class="integration-card">
             <div class="integration-icon outlook">O</div>
             <div class="integration-body">
-              <p class="integration-name">Outlook (Microsoft Graph)</p>
-              <p class="integration-status status-ok">Connected · Token valid for 47 days</p>
+              <p class="integration-name">Microsoft Graph (Email)</p>
+              <p class="integration-status" id="integration-graph-status">Checking…</p>
               <p class="integration-detail">Sender: <code>cs-team@solvit.co.ke</code></p>
             </div>
             <button class="btn-link">Configure</button>
