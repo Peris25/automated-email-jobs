@@ -169,6 +169,13 @@
           </div>
         </header>
 
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn-primary" id="upload-jobs-btn">⬆ Upload jobs (CSV / Excel)</button>
+          <button class="btn-secondary" id="download-template-btn">↓ Download template</button>
+          <button class="btn-secondary" id="zoho-sync-btn">⟳ Sync from Zoho now</button>
+          <input type="file" id="upload-file-input" accept=".csv,.xlsx,.xls" style="display:none;">
+        </div>
+
         <div class="filter-bar">
           <input type="text" id="jobSearch" placeholder="Search by registration, client, or solver...">
           <select id="phaseFilter">
