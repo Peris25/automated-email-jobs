@@ -24,37 +24,44 @@ logger = logging.getLogger(__name__)
 # ── Timing rules ──────────────────────────────────────────────
 
 def should_send_now(job: dict) -> bool:
-    """
-    Return True if this job's first email should be sent right now.
-    All times are in Nairobi timezone (EAT = UTC+3).
-    """
-    reason = job.get("reason", "")
-    now_eat = datetime.now(timezone.utc) + timedelta(hours=3)
+  """
+  Phase 1 AM timing rules (EAT = UTC+3):
+    unreachable / not_picking → send immediately (next 15-min cycle)
+    anything else             → send only if 3+ days since reason_logged_at
+  Phase 2 Solver → same logic, reason from latest_pending_reason
+  """
+  reason   = (job.get("reason") or "").lower()
+  now_utc  = datetime.now(timezone.utc)
+  now_eat  = now_utc + timedelta(hours=3)
 
-    if reason == "unreachable":
-        # Send within the next scheduler cycle (≤15 min after reason is logged)
-        return True
+  # Immediate triggers
+  if reason in ("unreachable", "not_picking", "not_ready"):
+      if reason == "not_ready":
+          # 3 days still in initiated
+          logged = job.get("reason_logged_at")
+          if logged:
+              try:
+                  dt = datetime.fromisoformat(str(logged))
+                  if dt.tzinfo is None:
+                      dt = dt.replace(tzinfo=timezone.utc)
+                  return (now_utc - dt) >= timedelta(days=3)
+              except Exception:
+                  pass
+          return False
+      return True  # unreachable and not_picking → immediate
 
-    if reason == "not_picking":
-        # Send at 5pm EAT same day
-        return now_eat.hour >= 17
+  # Any other reason → 3 days rule
+  logged = job.get("reason_logged_at")
+  if logged:
+      try:
+          dt = datetime.fromisoformat(str(logged))
+          if dt.tzinfo is None:
+              dt = dt.replace(tzinfo=timezone.utc)
+          return (now_utc - dt) >= timedelta(days=3)
+      except Exception:
+          pass
 
-    if reason == "not_ready":
-        # Send at 9am EAT the next day
-        reason_logged_at = job.get("reason_logged_at")
-        if reason_logged_at:
-            try:
-                logged = datetime.fromisoformat(str(reason_logged_at))
-                if logged.tzinfo is None:
-                    logged = logged.replace(tzinfo=timezone.utc)
-                age = datetime.now(timezone.utc) - logged
-                return age >= timedelta(hours=16) and now_eat.hour >= 9
-            except Exception:
-                pass
-        # Fallback: just check it's after 9am
-        return now_eat.hour >= 9
-
-    return False
+  return False
 
 
 def needs_followup(job: dict) -> bool:
