@@ -102,8 +102,13 @@ async def _dispatch(job: dict, is_followup: bool = False):
         logger.warning(f"Job {job_dict.get('id')} has no client_email — skipping")
         return
 
+    # Phase 2: CC the solver
+    cc_list = []
+    if job_dict.get("phase") == 2 and job_dict.get("solver_email"):
+        cc_list.append(job_dict["solver_email"])
+
     try:
-        result = await send_email(to_email, subject, body)
+        result = await send_email(to_email, subject, body, cc_emails=cc_list or None)
     except Exception as e:
         logger.error(f"Failed to send email for job {job_dict.get('id')}: {e}")
         return
