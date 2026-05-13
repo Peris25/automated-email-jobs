@@ -68,10 +68,11 @@ async def _get_token() -> str:
 # ── Send email ────────────────────────────────────────────────
 
 async def send_email(
-    to_email: str,
-    subject: str,
-    body: str,
-    reply_to_message_id: str | None = None,
+  to_email: str,
+  subject: str,
+  body: str,
+  reply_to_message_id: str | None = None,
+  cc_emails: list[str] | None = None,
 ) -> dict:
     """
     Send an email from cs-team@solvit.co.ke.
@@ -89,6 +90,7 @@ async def send_email(
             "body":    {"contentType": "HTML", "content": body},
             "toRecipients": [{"emailAddress": {"address": to_email}}],
             "replyTo": [{"emailAddress": {"address": SENDER_UPN}}],
+            **({"ccRecipients": [{"emailAddress": {"address": cc}} for cc in cc_emails]} if cc_emails else {}),
         },
         "saveToSentItems": True,
     }
