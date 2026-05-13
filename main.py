@@ -52,6 +52,10 @@ app.include_router(dashboard.router, prefix="/api",           tags=["Dashboard"]
 app.include_router(upload.router,    prefix="/api/upload",    tags=["Upload"])
 app.include_router(zoho_sync.router, prefix="/api/zoho",      tags=["Zoho"])
 
+@app.get("/health", include_in_schema=False)
+async def health():
+    return {"status": "ok"}
+
 # ── Serve portal static files (same origin as API) ───────────
 # The portal's index.html references /css/styles.css and /js/app.js
 # so we mount the portal folder at both /css and /js explicitly.
@@ -63,11 +67,6 @@ if os.path.exists(PORTAL_DIR) and os.path.exists(os.path.join(PORTAL_DIR, "index
     @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     def serve_portal():
         return FileResponse(os.path.join(PORTAL_DIR, "index.html"))
-
-    @app.get("/health")
-    async def health():
-        return {"status": "ok"}
-
 
 if __name__ == "__main__":
     import uvicorn
