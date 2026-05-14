@@ -174,8 +174,8 @@ async def run_email_dispatcher():
 
         sent_count = 0
         for job in first_send_jobs:
-            if should_send_now(dict(job)):
-                await _dispatch(dict(job), is_followup=False)
+          if should_send_now(dict(job._mapping)):
+              await _dispatch(dict(job._mapping), is_followup=False)
                 sent_count += 1
 
         # Jobs awaiting follow-up (3 days, no reply)
@@ -190,8 +190,8 @@ async def run_email_dispatcher():
 
         followup_count = 0
         for job in followup_jobs:
-            if needs_followup(dict(job)):
-                await _dispatch(dict(job), is_followup=True)
+          if needs_followup(dict(job._mapping)):
+              await _dispatch(dict(job._mapping), is_followup=True)
                 followup_count += 1
 
         logger.info(
