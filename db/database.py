@@ -44,6 +44,7 @@ jobs = Table(
     Column("scheduled_date",      Text),
     Column("solver_name",         Text),
     Column("solver_phone",        Text),
+    Column("solver_email",        Text), 
     Column("emails_sent",         Integer, server_default="0"),
     Column("last_email_sent_at",  Text),
     Column("status",              Text,    server_default="awaiting_reply"),
