@@ -84,7 +84,7 @@ def _normalise_reason(val: str) -> str:
 def _normalise_columns(df: pd.DataFrame) -> pd.DataFrame:
     rename = {}
     for col in df.columns:
-        key = col.lower().strip().lstrip("\ufeff")
+        key = col.encode('utf-8').decode('utf-8-sig').lower().strip()
         mapped = COLUMN_ALIASES.get(key)
         if mapped:
             rename[col] = mapped
