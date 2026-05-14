@@ -14,7 +14,7 @@ async def list_jobs(user=Depends(get_current_user)):
         .where(jobs_table.c.job_status == "pending")
         .order_by(jobs_table.c.initiated_date)
     )
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 
 @router.get("/jobs/all")
@@ -23,7 +23,7 @@ async def list_all_jobs(user=Depends(get_current_user)):
     rows = await database.fetch_all(
         jobs_table.select().order_by(jobs_table.c.created_at.desc())
     )
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 
 @router.get("/jobs/{job_id}")
@@ -43,7 +43,7 @@ async def get_job_emails(job_id: str, user=Depends(get_current_user)):
         .where(email_log_table.c.job_id == job_id)
         .order_by(email_log_table.c.sent_at.desc())
     )
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 
 @router.patch("/jobs/{job_id}/resolve")
