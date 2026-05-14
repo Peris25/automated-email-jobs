@@ -86,12 +86,14 @@ class _DB:
     async def fetch_all(self, query):
         async with engine.connect() as conn:
             result = await conn.execute(query)
-            return result.fetchall()
+            rows = result.fetchall()
+            return [dict(r._mapping) for r in rows]
 
     async def fetch_one(self, query):
         async with engine.connect() as conn:
             result = await conn.execute(query)
-            return result.fetchone()
+            row = result.fetchone()
+            return dict(row._mapping) if row else None
 
     async def connect(self): pass
     async def disconnect(self): pass
