@@ -19,22 +19,22 @@ async def get_kpis(user=Depends(get_current_user)):
     jobs_table.select().where(jobs_table.c.job_status == "pending")
     )
     pending_total   = len(pending_all)
-    pending_phase_1 = sum(1 for r in pending_all if r._mapping["phase"] == 1)
-    pending_phase_2 = sum(1 for r in pending_all if r._mapping["phase"] == 2)
+    pending_phase_1 = sum(1 for r in pending_all if r["phase"] == 1)
+    pending_phase_2 = sum(1 for r in pending_all if r["phase"] == 2)
 
     # Emails today
     today_emails = await database.fetch_all(
         email_log_table.select().where(email_log_table.c.sent_at >= today_start)
     )
     emails_today          = len(today_emails)
-    emails_today_first    = sum(1 for e in today_emails if e._mapping["template_key"] != "followup")
-    emails_today_followup = sum(1 for e in today_emails if e._mapping["template_key"] == "followup")
+    emails_today_first    = sum(1 for e in today_emails if e["template_key"] != "followup")
+    emails_today_followup = sum(1 for e in today_emails if e["template_key"] == "followup")
 
     # Reply rate (7 day)
     week_emails = await database.fetch_all(
         email_log_table.select().where(email_log_table.c.sent_at >= week_start)
     )
-    replied = sum(1 for e in week_emails if e._mapping["delivery_status"] == "replied")
+    replied = sum(1 for e in week_emails if e["delivery_status"] == "replied")
     reply_rate_7d = round((replied / len(week_emails) * 100) if week_emails else 0)
 
     # Resolved this week (job_status changed to completed/scheduled)
@@ -86,7 +86,7 @@ async def get_reason_breakdown(user=Depends(get_current_user)):
     )
     counts: dict = {}
     for r in rows:
-        reason = r._mapping["reason"] or "unknown"
+        reason = r["reason"] or "unknown"
         counts[reason] = counts.get(reason, 0) + 1
 
     label_map = {
