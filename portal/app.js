@@ -300,18 +300,24 @@ function closeModal() { document.getElementById('job-modal').style.display = 'no
    ===================================================== */
 
 function renderActivity() {
-  const el = document.getElementById('activityList');
-  if (!el) return;
-
-  if (!STATE.activity.length) {
-    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-tertiary);font-size:13px;">No email activity yet</div>';
-    return;
-  }
-
-  el.innerHTML = STATE.activity.map(a => {
-    const date = (a.sent_at || '').split('T')[0] || (a.sent_at || '').split(' ')[0] || '—';
-    const time = (a.sent_at || '').split('T')[1] || (a.sent_at || '').split(' ')[1] || '';
-    return `
+   const el = document.getElementById('activityList');
+   if (!el) return;
+   
+   if (!STATE.activity.length) {
+      el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-tertiary);font-size:13px;">No email activity yet</div>';
+      return;
+   }
+   
+   el.innerHTML = STATE.activity.map(a => {  
+      const date = (a.sent_at || '').split('T')[0] || '—';
+      const rawTime = (a.sent_at || '').split('T')[1] || '';
+      // Convert to EAT (+3)
+      let time = rawTime.substring(0, 5);
+      if (rawTime) {
+        const d = new Date(a.sent_at);
+        time = d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi' });
+      }
+      return `
       <div class="table-row table-row-activity">
         <div><div>${date}</div><div class="cell-secondary">${time.substring(0,5)}</div></div>
         <div class="cell-primary">${a.client || '—'}</div>
@@ -320,7 +326,19 @@ function renderActivity() {
         <div><span class="phase-badge">Phase ${a.phase || '—'}</span></div>
         <div><span class="status-badge status-${(a.status||'').toLowerCase()}">${a.status || '—'}</span></div>
       </div>`;
-  }).join('');
+   }).join('');
+   // Update email activity KPIs from real data
+   const total     = STATE.activity.length;
+   const delivered = STATE.activity.filter(a => a.status !== 'bounced').length;
+   const rate      = total > 0 ? Math.round((delivered / total) * 100) : 0;
+   
+   const sentEl  = document.getElementById('email-kpi-sent');
+   const delivEl = document.getElementById('email-kpi-delivered');
+   const rateEl  = document.getElementById('email-kpi-rate');
+   
+   if (sentEl)  sentEl.textContent  = total;
+   if (delivEl) delivEl.textContent = delivered;
+   if (rateEl)  rateEl.textContent  = rate + '%';
 }
 
 /* =====================================================
