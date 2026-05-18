@@ -1,5 +1,4 @@
 """Activity log and live feed routes."""
-
 from fastapi import APIRouter, Depends
 from datetime import datetime, timedelta, timezone
 from db.database import database, jobs as jobs_table, email_log as email_log_table
@@ -8,11 +7,8 @@ import sqlalchemy as sa
 
 router = APIRouter()
 
-
 @router.get("/activity")
-async def get_activity(days: int = 7, user=Depends(get_current_user)):
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-
+async def get_activity(user=Depends(get_current_user)):
     rows = await database.fetch_all(
         sa.select(
             email_log_table.c.sent_at,
@@ -28,7 +24,6 @@ async def get_activity(days: int = 7, user=Depends(get_current_user)):
         .order_by(email_log_table.c.sent_at.desc())
         .limit(200)
     )
-
     result = []
     for r in rows:
         row = dict(r)
@@ -41,7 +36,7 @@ async def get_activity(days: int = 7, user=Depends(get_current_user)):
 @router.get("/feed/live")
 async def get_live_feed(user=Depends(get_current_user)):
     """Last 30 minutes of activity for the dashboard feed."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%S')
 
     rows = await database.fetch_all(
         sa.select(
@@ -59,7 +54,6 @@ async def get_live_feed(user=Depends(get_current_user)):
         .order_by(email_log_table.c.sent_at.desc())
         .limit(30)
     )
-
     feed = []
     for r in rows:
         row = dict(r)
@@ -78,7 +72,6 @@ async def get_live_feed(user=Depends(get_current_user)):
             feed_type = "sent"
             text = f"Email sent to {client} ({reg}) — phase {phase} reminder"
 
-        # Relative time label
         try:
             sent = datetime.fromisoformat(row["sent_at"])
             if sent.tzinfo is None:
@@ -89,5 +82,4 @@ async def get_live_feed(user=Depends(get_current_user)):
             time_label = "recently"
 
         feed.append({"time": time_label, "type": feed_type, "text": text})
-
     return feed
