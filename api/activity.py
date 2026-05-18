@@ -25,8 +25,8 @@ async def get_activity(days: int = 7, user=Depends(get_current_user)):
         .select_from(
             email_log_table.join(jobs_table, email_log_table.c.job_id == jobs_table.c.id)
         )
-        .where(email_log_table.c.sent_at > cutoff)
         .order_by(email_log_table.c.sent_at.desc())
+        .limit(200)
     )
 
     result = []
