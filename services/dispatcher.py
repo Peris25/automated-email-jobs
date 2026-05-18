@@ -7,30 +7,90 @@ from datetime import datetime, timedelta, timezone
 
 from db.database import database, jobs as jobs_table, email_log as email_log_table
 from services.graph import send_email
-from services.templates import get_template
 
 logger = logging.getLogger(__name__)
 
 
 # ── Timing rules ──────────────────────────────────────────────
 
-def should_send_now(job: dict) -> bool:
+async def get_rule(reason: str) -> dict | None:
+    """
+    Fetch timing rule from DB for this reason.
+    No fallback to default — unknown reasons are ignored unless explicitly configured.
+    """
+    try:
+        from db.database import email_rules
+        row = await database.fetch_one(
+            email_rules.select().where(
+                (email_rules.c.id == reason) &
+                (email_rules.c.enabled == True)
+            )
+        )
+        return row
+    except Exception:
+        # email_rules table may not exist yet (before seed)
+        return None
+
+
+async def should_send_now(job: dict) -> bool:
+    """
+    Check timing rules from DB.
+
+    next_day_8am → send tomorrow at 8am EAT regardless of upload time.
+      Logic: job must have been logged at least 8 hours ago (ensures
+      it was from a previous day's upload) AND current EAT time >= 08:00.
+      "Next day" means: if logged today any time before midnight,
+      send the following day from 8am onwards.
+
+    days → send after N days from reason_logged_at, at 8am EAT.
+
+    immediate → send after delay_minutes from reason_logged_at.
+    """
     reason  = (job.get("reason") or "").lower()
     now_utc = datetime.now(timezone.utc)
+    now_eat = now_utc + timedelta(hours=3)
 
-    if reason in ("unreachable", "not_picking"):
-        return True
+    rule = await get_rule(reason)
+    if not rule:
+        logger.debug(f"No rule for reason '{reason}' — skipping job {job.get('id')}")
+        return False
 
-    # not_ready and everything else → 3 days rule
+    timing = rule["timing"]
     logged = job.get("reason_logged_at")
+
+    # Parse the logged timestamp
+    logged_dt = None
     if logged:
         try:
-            dt = datetime.fromisoformat(str(logged))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return (now_utc - dt) >= timedelta(days=3)
+            logged_dt = datetime.fromisoformat(str(logged))
+            if logged_dt.tzinfo is None:
+                logged_dt = logged_dt.replace(tzinfo=timezone.utc)
         except Exception:
             pass
+
+    if timing == "next_day_8am":
+        if not logged_dt:
+            return now_eat.hour >= 8
+        # Convert logged time to EAT date
+        logged_eat = logged_dt + timedelta(hours=3)
+        logged_eat_date = logged_eat.date()
+        now_eat_date    = now_eat.date()
+        # Must be a different (later) day AND after 8am EAT
+        return now_eat_date > logged_eat_date and now_eat.hour >= 8
+
+    if timing == "days":
+        delay_days = rule.get("delay_days") or 3
+        if not logged_dt:
+            return False
+        elapsed = now_utc - logged_dt
+        # Send after N days, but only at 8am EAT onwards
+        return elapsed >= timedelta(days=delay_days) and now_eat.hour >= 8
+
+    if timing == "immediate":
+        delay_mins = rule.get("delay_minutes") or 15
+        if not logged_dt:
+            return True
+        return (now_utc - logged_dt) >= timedelta(minutes=delay_mins)
 
     return False
 
@@ -51,7 +111,10 @@ def needs_followup(job: dict) -> bool:
         sent_dt = datetime.fromisoformat(str(last_sent))
         if sent_dt.tzinfo is None:
             sent_dt = sent_dt.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc) - sent_dt >= timedelta(days=3)
+        # Follow-up after 3 days at 8am EAT
+        now_utc  = datetime.now(timezone.utc)
+        now_eat  = now_utc + timedelta(hours=3)
+        return (now_utc - sent_dt) >= timedelta(days=3) and now_eat.hour >= 8
     except Exception:
         return False
 
@@ -60,7 +123,8 @@ def needs_followup(job: dict) -> bool:
 
 async def _dispatch(job: dict, is_followup: bool = False):
     try:
-        template_key, subject, body = get_template(job, is_followup=is_followup)
+        from services.templates import get_template_from_db
+        template_key, subject, body = await get_template_from_db(job, is_followup=is_followup)
     except ValueError as e:
         logger.warning(f"Job {job.get('id')}: {e} — skipping")
         return
@@ -133,7 +197,7 @@ async def run_email_dispatcher():
 
         sent_count = 0
         for job in first_send_jobs:
-            if should_send_now(job):
+            if await should_send_now(job):
                 await _dispatch(job, is_followup=False)
                 sent_count += 1
 
