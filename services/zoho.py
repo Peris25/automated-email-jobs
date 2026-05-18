@@ -74,16 +74,22 @@ async def _fetch_view(view_id: str) -> tuple[list, list]:
         f"/workspaces/{ZOHO_WORKSPACE_ID}/views/{view_id}/data"
     )
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(
-            url,
-            headers={
-                "Authorization":   f"Zoho-oauthtoken {token}",
-                "ZANALYTICS-ORGID": ZOHO_WORKSPACE_ID,
-            },
-            params={"CONFIG": '{"responseFormat":"json","columnFormat":"name"}'},
-        )
-        r.raise_for_status()
-        payload = r.json()
+      r = await client.get(
+          url,
+          headers={
+              "Authorization":    f"Zoho-oauthtoken {token}",
+              "ZANALYTICS-ORGID": ZOHO_WORKSPACE_ID,
+          },
+          params={
+              "responseFormat": "json",
+              "columnFormat":   "name",
+          },
+      )
+      if not r.is_success:
+          # Log full response for debugging
+          logger.error(f"Zoho API error {r.status_code}: {r.text[:500]}")
+          r.raise_for_status()
+      payload = r.json()
 
     raw  = payload.get("data", {})
     cols = raw.get("columns", [])
