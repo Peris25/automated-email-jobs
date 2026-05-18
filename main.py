@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from db.database import init_db
-from api import jobs, activity, dashboard, auth, upload, zoho_sync
+from api import jobs, activity, dashboard, auth, upload, zoho_sync, rules
 from scheduler.runner import start_scheduler
 
 
@@ -51,6 +51,7 @@ app.include_router(activity.router,  prefix="/api",           tags=["Activity"])
 app.include_router(dashboard.router, prefix="/api",           tags=["Dashboard"])
 app.include_router(upload.router,    prefix="/api/upload",    tags=["Upload"])
 app.include_router(zoho_sync.router, prefix="/api/zoho",      tags=["Zoho"])
+app.include_router(rules.router, prefix="/api", tags=["Rules"])
 
 @app.get("/health", include_in_schema=False)
 async def health():
