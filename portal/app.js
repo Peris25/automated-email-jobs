@@ -84,6 +84,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById('view-' + btn.dataset.view).classList.add('active');
     if (btn.dataset.view === 'settings') loadIntegrationStatus();
+    if (btn.dataset.view === 'rules') { loadRules(); loadTemplates(); }
   });
 });
 
@@ -113,9 +114,7 @@ async function init() {
     renderFeed();
     renderJobs();
     renderActivity();
-    renderTemplate('phase1');
     bindFilters();
-    bindTemplateTabs();
     bindUpload();
     updateNavCount();
 
@@ -342,39 +341,6 @@ function renderActivity() {
 }
 
 /* =====================================================
-   TEMPLATES
-   ===================================================== */
-
-function renderTemplate(key) {
-  const t = TEMPLATES[key];
-  const hl = s => s.replace(/\{\{(\w+)\}\}/g, '<span class="var-token">{{$1}}</span>');
-  const bodyHtml = hl(t.body).replace(/\n/g, '<br>');
-
-  document.getElementById('templatePreview').innerHTML = `
-    <dl class="template-meta">
-      <dt>From</dt><dd class="cell-mono">${t.from}</dd>
-      <dt>Subject</dt><dd>${hl(t.subject)}</dd>
-    </dl>
-    <div class="template-body">${bodyHtml}</div>
-    <div class="template-vars">
-      <strong>Variables (filled automatically):</strong>
-      <code>{{client_name}}</code><code>{{vehicle_reg}}</code>
-      <code>{{initiated_date}}</code><code>{{scheduled_date}}</code>
-      <code>{{solver_name}}</code><code>{{solver_phone}}</code>
-    </div>`;
-}
-
-function bindTemplateTabs() {
-  document.querySelectorAll('.template-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderTemplate(btn.dataset.template);
-    });
-  });
-}
-
-/* =====================================================
    CSV / EXCEL UPLOAD
    ===================================================== */
 
@@ -507,3 +473,165 @@ async function initCharts() {
     console.warn('Charts failed to load:', err.message);
   }
 }
+
+/* =====================================================
+   RULES
+   ===================================================== */
+
+let _rules = [];
+
+async function loadRules() {
+  _rules = await API.getRules().catch(() => []);
+  const el = document.getElementById('rules-list');
+  if (!el) return;
+
+  if (!_rules.length) {
+    el.innerHTML = '<div style="padding:20px;color:var(--text-tertiary);font-size:13px;">No rules found. Rules are seeded automatically on first load.</div>';
+    return;
+  }
+
+  const TIMING_OPTIONS = [
+    { value: 'next_day_8am', label: 'Next day at 8:00 AM' },
+    { value: 'days',         label: 'After N days' },
+    { value: 'immediate',    label: 'Immediate (after delay)' },
+  ];
+
+  el.innerHTML = _rules.map(rule => `
+    <div class="rule-card" id="rule-card-${rule.id}">
+      <div class="rule-head">
+        <span class="reason-badge">${rule.reason}</span>
+        <label class="toggle" style="margin-left:auto;">
+          <input type="checkbox" ${rule.enabled ? 'checked' : ''}
+            onchange="toggleRule('${rule.id}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:14px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;">Timing</label>
+          <select id="rule-timing-${rule.id}" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border-default);font-size:13px;background:var(--bg-card);color:var(--text-primary);">
+            ${TIMING_OPTIONS.map(o => `<option value="${o.value}" ${rule.timing === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;">Delay minutes (if immediate)</label>
+          <input type="number" id="rule-delay-mins-${rule.id}" value="${rule.delay_minutes || 15}" min="1" max="1440"
+            style="width:90px;padding:7px 10px;border-radius:6px;border:1px solid var(--border-default);font-size:13px;background:var(--bg-card);color:var(--text-primary);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;">Delay days (if days-based)</label>
+          <input type="number" id="rule-delay-days-${rule.id}" value="${rule.delay_days || 3}" min="1" max="30"
+            style="width:90px;padding:7px 10px;border-radius:6px;border:1px solid var(--border-default);font-size:13px;background:var(--bg-card);color:var(--text-primary);">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;">Follow-up after (days)</label>
+          <input type="number" id="rule-followup-${rule.id}" value="${rule.followup_days || 3}" min="1" max="30"
+            style="width:90px;padding:7px 10px;border-radius:6px;border:1px solid var(--border-default);font-size:13px;background:var(--bg-card);color:var(--text-primary);">
+        </div>
+        <button class="btn-primary" style="height:36px;align-self:flex-end;" onclick="saveRule('${rule.id}')">Save</button>
+      </div>
+    </div>`).join('');
+}
+
+async function saveRule(ruleId) {
+  const timing     = document.getElementById(`rule-timing-${ruleId}`).value;
+  const delay_mins = parseInt(document.getElementById(`rule-delay-mins-${ruleId}`).value) || 15;
+  const delay_days = parseInt(document.getElementById(`rule-delay-days-${ruleId}`).value) || 3;
+  const followup   = parseInt(document.getElementById(`rule-followup-${ruleId}`).value) || 3;
+  const enabled    = document.querySelector(`#rule-card-${ruleId} input[type=checkbox]`).checked;
+
+  try {
+    await API.updateRule(ruleId, { timing, delay_minutes: delay_mins, delay_days, followup_days: followup, enabled });
+    showToast(`Rule saved`, 'success');
+  } catch(e) {
+    showToast('Failed to save rule: ' + e.message, 'error');
+  }
+}
+
+async function toggleRule(ruleId, enabled) {
+  const timing     = document.getElementById(`rule-timing-${ruleId}`).value;
+  const delay_mins = parseInt(document.getElementById(`rule-delay-mins-${ruleId}`).value) || 15;
+  const delay_days = parseInt(document.getElementById(`rule-delay-days-${ruleId}`).value) || 3;
+  const followup   = parseInt(document.getElementById(`rule-followup-${ruleId}`).value) || 3;
+  try {
+    await API.updateRule(ruleId, { timing, delay_minutes: delay_mins, delay_days, followup_days: followup, enabled });
+    showToast(`Rule ${enabled ? 'enabled' : 'disabled'}`, 'info');
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+window.saveRule   = saveRule;
+window.toggleRule = toggleRule;
+
+/* =====================================================
+   TEMPLATES EDITOR
+   ===================================================== */
+
+let _templates = [];
+
+async function loadTemplates() {
+  _templates = await API.getTemplates().catch(() => []);
+  const tabsEl = document.getElementById('template-tabs');
+  const editorEl = document.getElementById('templateEditor');
+  if (!tabsEl || !editorEl) return;
+
+  if (!_templates.length) {
+    editorEl.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;padding:20px;">No templates found.</div>';
+    return;
+  }
+
+  tabsEl.innerHTML = _templates.map((t, i) =>
+    `<button class="template-btn ${i === 0 ? 'active' : ''}" onclick="selectTemplate('${t.id}', this)">${t.label}</button>`
+  ).join('');
+
+  renderTemplateEditor(_templates[0]);
+}
+
+function selectTemplate(id, btn) {
+  document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const tmpl = _templates.find(t => t.id === id);
+  if (tmpl) renderTemplateEditor(tmpl);
+}
+window.selectTemplate = selectTemplate;
+
+function renderTemplateEditor(tmpl) {
+  const el = document.getElementById('templateEditor');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;margin-top:16px;">
+      <div>
+        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Subject</label>
+        <input type="text" id="tmpl-subject" value="${(tmpl.subject || '').replace(/"/g, '&quot;')}"
+          style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid var(--border-default);font-size:14px;background:var(--bg-card);color:var(--text-primary);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text-secondary);font-weight:600;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Body</label>
+        <textarea id="tmpl-body" rows="12"
+          style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid var(--border-default);font-size:13px;font-family:var(--font-body);line-height:1.7;background:var(--bg-card);color:var(--text-primary);box-sizing:border-box;resize:vertical;">${tmpl.body || ''}</textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveTemplate('${tmpl.id}')">Save template</button>
+        <span style="font-size:12px;color:var(--text-tertiary);">
+          Variables: <code>{{client_name}}</code> <code>{{vehicle_reg}}</code>
+          <code>{{initiated_date}}</code> <code>{{scheduled_date}}</code>
+          <code>{{solver_name}}</code> <code>{{solver_phone}}</code>
+        </span>
+      </div>
+    </div>`;
+}
+
+async function saveTemplate(id) {
+  const subject = document.getElementById('tmpl-subject').value.trim();
+  const body    = document.getElementById('tmpl-body').value.trim();
+  if (!subject || !body) { showToast('Subject and body cannot be empty', 'warning'); return; }
+  try {
+    await API.updateTemplate(id, { subject, body });
+    const idx = _templates.findIndex(t => t.id === id);
+    if (idx >= 0) { _templates[idx].subject = subject; _templates[idx].body = body; }
+    showToast('Template saved', 'success');
+  } catch(e) {
+    showToast('Failed to save: ' + e.message, 'error');
+  }
+}
+window.saveTemplate = saveTemplate;
