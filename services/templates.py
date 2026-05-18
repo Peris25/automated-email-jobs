@@ -190,21 +190,36 @@ TEMPLATE_MAP = {
 }
 
 
-def get_template(job: dict, is_followup: bool = False) -> tuple[str, str, str]:
+async def get_template_from_db(job: dict, is_followup: bool = False) -> tuple[str, str, str]:
     """
-    Returns (template_key, subject, html_body).
-    Raises ValueError if no template found.
+    Fetch template from DB, render variables, return (key, subject, body).
+    Falls back to hardcoded templates if DB has none.
     """
+    from db.database import database, email_templates
+
     if is_followup:
-        subject, body = followup(job)
-        return "followup", subject, body
+        tmpl = await database.fetch_one(
+            email_templates.select().where(email_templates.c.id == "followup")
+        )
+    else:
+        phase  = int(job.get("phase", 1))
+        reason = (job.get("reason") or "").lower()
+        tmpl_id = f"phase{phase}_{reason}"
+        tmpl = await database.fetch_one(
+            email_templates.select().where(email_templates.c.id == tmpl_id)
+        )
 
-    phase  = int(job.get("phase", 1))
-    reason = job.get("reason", "")
-    fn = TEMPLATE_MAP.get((phase, reason))
-    if not fn:
-        raise ValueError(f"No template for phase={phase} reason={reason}")
+    if not tmpl:
+        # Fall back to hardcoded
+        return get_template(job, is_followup=is_followup)
 
-    subject, body = fn(job)
-    template_key = f"phase{phase}_{reason}"
-    return template_key, subject, body
+    def render(text: str) -> str:
+        for key, val in job.items():
+            text = text.replace(f"{{{{{key}}}}}", str(val or ""))
+        return text
+
+    subject = render(tmpl["subject"])
+    body    = render(tmpl["body"]).replace("\n", "<br>")
+    body    = _base_html(body)
+    key     = tmpl["id"]
+    return key, subject, body
