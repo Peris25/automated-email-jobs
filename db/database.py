@@ -71,6 +71,28 @@ email_log = Table(
     Column("reply_at",             Text),
 )
 
+email_rules = Table(
+    "email_rules", metadata,
+    Column("id",           Text, primary_key=True),   # e.g. "unreachable", "not_picking"
+    Column("reason",       Text, nullable=False),      # display label
+    Column("timing",       Text, nullable=False),      # "immediate" | "same_day_5pm" | "next_day_9am" | "days"
+    Column("delay_days",   Integer, server_default="0"),  # for custom day delays
+    Column("delay_minutes",Integer, server_default="0"),  # for immediate with custom minutes
+    Column("followup_days",Integer, server_default="3"),  # days before follow-up
+    Column("enabled",      Boolean, server_default="1"),
+    Column("updated_at",   Text),
+)
+
+email_templates = Table(
+    "email_templates", metadata,
+    Column("id",          Text, primary_key=True),   # e.g. "phase1_unreachable"
+    Column("phase",       Integer, nullable=False),
+    Column("reason",      Text),                     # null = applies to all reasons (followup)
+    Column("label",       Text, nullable=False),
+    Column("subject",     Text, nullable=False),
+    Column("body",        Text, nullable=False),
+    Column("updated_at",  Text),
+)
 
 # ── Thin DB wrapper ───────────────────────────────────────────
 class _DB:
