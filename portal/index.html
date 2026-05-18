@@ -252,58 +252,25 @@
       <section id="view-rules" class="view">
         <header class="view-header">
           <div>
-            <h1>Rules & templates</h1>
+            <h1>Rules &amp; templates</h1>
             <p>Configure when emails are sent and what they say</p>
           </div>
         </header>
-
+      
         <div class="info-banner">
-          These rules run automatically. The system queries Zoho Analytics every 15 minutes and dispatches emails through Outlook based on the conditions below.
+          Rules and templates are saved to the database and take effect on the next scheduler cycle (every 15 minutes).
         </div>
-
+      
         <h2 class="section-heading">Trigger rules</h2>
-
-        <div class="rule-list">
-          <div class="rule-card">
-            <div class="rule-head">
-              <span class="reason-badge reason-not-picking">Not picking</span>
-              <h4>Same-day batch · 5:00 PM</h4>
-              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
-            </div>
-            <p>Email sent at 5:00 PM the day the reason was logged. Tone: "we tried to reach you, please get in touch." Follow-up after 3 days if still pending.</p>
-          </div>
-
-          <div class="rule-card">
-            <div class="rule-head">
-              <span class="reason-badge reason-unreachable">Unreachable</span>
-              <h4>Immediate · within 1 hour</h4>
-              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
-            </div>
-            <p>Email sent within 1 hour of the reason being logged. Phone may be unavailable, so email is the priority channel. Follow-up after 3 days.</p>
-          </div>
-
-          <div class="rule-card">
-            <div class="rule-head">
-              <span class="reason-badge reason-not-ready">Not ready</span>
-              <h4>Next-morning batch · 9:00 AM</h4>
-              <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
-            </div>
-            <p>Email sent at 9:00 AM the next day. Soft tone — client said wait. Follow-up after 3 days with a "still need this?" message.</p>
-          </div>
+        <div id="rules-list">
+          <div style="color:var(--text-tertiary);font-size:13px;padding:20px;">Click Rules &amp; templates to load…</div>
         </div>
-
-        <h2 class="section-heading">Email templates</h2>
-
-        <div class="template-tabs">
-          <button class="template-btn active" data-template="phase1">Phase 1 — AM Team</button>
-          <button class="template-btn" data-template="phase2">Phase 2 — Solver</button>
-          <button class="template-btn" data-template="followup">3-day follow-up</button>
-        </div>
-
-        <div id="templatePreview" class="template-preview"></div>
-
-        <h2 class="section-heading">Integration status</h2>
-
+      
+        <h2 class="section-heading" style="margin-top:32px;">Email templates</h2>
+        <div class="template-tabs" id="template-tabs"></div>
+        <div id="templateEditor" class="template-preview"></div>
+      
+        <h2 class="section-heading" style="margin-top:32px;">Integration status</h2>
         <div class="integration-grid">
           <div class="integration-card">
             <div class="integration-icon zoho">Z</div>
