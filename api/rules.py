@@ -22,8 +22,7 @@ NOW = lambda: datetime.now(timezone.utc).isoformat()
 DEFAULT_RULES = [
     {"id": "unreachable",   "reason": "Unreachable",   "timing": "next_day_8am",      "delay_minutes": 15,  "delay_days": 0, "followup_days": 3, "enabled": True},
     {"id": "not_picking",   "reason": "Not picking",   "timing": "next_day_8am",   "delay_minutes": 0,   "delay_days": 0, "followup_days": 3, "enabled": True},
-    {"id": "not_ready",     "reason": "Not ready",     "timing": "next_day_9am",   "delay_minutes": 0,   "delay_days": 0, "followup_days": 3, "enabled": True},
-    {"id": "default",       "reason": "Any other",     "timing": "days",           "delay_minutes": 0,   "delay_days": 3, "followup_days": 3, "enabled": True},
+    {"id": "not_ready", "reason": "Not ready", "timing": "days", "delay_minutes": 0, "delay_days": 3, "followup_days": 3, "enabled": True},
 ]
 
 # ── Default templates ─────────────────────────────────────────
