@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from db.database import database, email_rules, email_templates
 from api.auth import get_current_user
 
+from sqlalchemy.dialects.postgresql import insert
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -75,29 +77,36 @@ DEFAULT_TEMPLATES = [
 # ── Seed endpoint ─────────────────────────────────────────────
 
 @router.post("/rules/seed")
-async def seed_defaults(user=Depends(get_current_user)):
-    """Seed default rules and templates into DB. Safe to run multiple times."""
-    now = NOW()
+async def seed_defaults(user=None):
+    now = datetime.now(timezone.utc).isoformat()
+
     rules_added = 0
     templates_added = 0
 
     for rule in DEFAULT_RULES:
-        existing = await database.fetch_one(
-            email_rules.select().where(email_rules.c.id == rule["id"])
+        stmt = (
+            insert(email_rules)
+            .values(**rule, updated_at=now)
+            .on_conflict_do_nothing(index_elements=["id"])
         )
-        if not existing:
-            await database.execute(email_rules.insert().values(**rule, updated_at=now))
+        result = await database.execute(stmt)
+        if result:
             rules_added += 1
 
     for tmpl in DEFAULT_TEMPLATES:
-        existing = await database.fetch_one(
-            email_templates.select().where(email_templates.c.id == tmpl["id"])
+        stmt = (
+            insert(email_templates)
+            .values(**tmpl, updated_at=now)
+            .on_conflict_do_nothing(index_elements=["id"])
         )
-        if not existing:
-            await database.execute(email_templates.insert().values(**tmpl, updated_at=now))
+        result = await database.execute(stmt)
+        if result:
             templates_added += 1
 
-    return {"rules_added": rules_added, "templates_added": templates_added}
+    return {
+        "rules_added": rules_added,
+        "templates_added": templates_added,
+    }
 
 
 # ── Rules CRUD ────────────────────────────────────────────────
