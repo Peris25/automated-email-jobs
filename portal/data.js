@@ -95,7 +95,8 @@ const API = {
     a.href = url; a.download = 'jobs_template.csv'; a.click();
     URL.revokeObjectURL(url);
   },
-   // Rules
+
+  // Rules
   async getRules() { return this._get('/rules'); },
   async updateRule(id, data) {
     const res = await fetch(`${this.baseUrl}/rules/${id}`, {
@@ -114,5 +115,60 @@ const API = {
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
     return res.json();
   },
-   
+
+  // Upload history
+  async getUploadHistory()    { return this._get('/upload/history'); },
+  async setUploadBaseline(id) {
+    const res = await fetch(`${this.baseUrl}/upload/${id}/baseline`, {
+      method: 'PATCH', headers: this._headers()
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
+    return res.json();
+  },
+
+  // Conversion analytics
+  async getConversion(baselineId, latestId) {
+    let path = '/conversion';
+    const params = [];
+    if (baselineId) params.push(`baseline=${baselineId}`);
+    if (latestId)   params.push(`latest=${latestId}`);
+    if (params.length) path += '?' + params.join('&');
+    return this._get(path);
+  },
+  async getConversionUploads() { return this._get('/conversion/uploads'); },
+
+  // Solvers directory
+  async getSolvers()             { return this._get('/solvers'); },
+  async addSolver(data) {
+    const res = await fetch(`${this.baseUrl}/solvers`, {
+      method: 'POST', headers: this._headers(), body: JSON.stringify(data)
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
+    return res.json();
+  },
+  async updateSolver(id, data) {
+    const res = await fetch(`${this.baseUrl}/solvers/${id}`, {
+      method: 'PUT', headers: this._headers(), body: JSON.stringify(data)
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
+    return res.json();
+  },
+  async deleteSolver(id) {
+    const res = await fetch(`${this.baseUrl}/solvers/${id}`, {
+      method: 'DELETE', headers: this._headers()
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
+    return res.json();
+  },
+
+  // Phase settings
+  async getPhaseSettings()       { return this._get('/phase-settings'); },
+  async updatePhaseSetting(phase, data) {
+    const res = await fetch(`${this.baseUrl}/phase-settings/${phase}`, {
+      method: 'PUT', headers: this._headers(), body: JSON.stringify(data)
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
+    return res.json();
+  },
+
 };
