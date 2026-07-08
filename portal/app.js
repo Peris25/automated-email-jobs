@@ -1045,3 +1045,19 @@ async function setBaseline(id) {
   }
 }
 window.setBaseline = setBaseline;
+
+/* =====================================================
+   SESSION BOOTSTRAP — keep users logged in across refreshes
+   ===================================================== */
+(async function restoreSession() {
+  if (API.isLoggedIn && API.isLoggedIn()) {
+    document.getElementById('login-view').style.display = 'none';
+    document.getElementById('app').style.display = 'grid';
+    const user = API.currentUser ? API.currentUser() : null;
+    const nameEl = document.getElementById('user-name');
+    if (nameEl && user) nameEl.textContent = user.name || user.email;
+    await init();
+  } else {
+    showLoginView();
+  }
+})();
