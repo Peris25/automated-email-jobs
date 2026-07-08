@@ -137,59 +137,52 @@ async def _get_last_sent_ids(token: str) -> tuple[str, str]:
 
 async def fetch_unread_replies() -> list[dict]:
     """
-    Poll cs-team@solvit.co.ke inbox for unread messages.
-    Uses /groups/ endpoint since cs-team is a Microsoft 365 Group.
+    Poll the SENDER_UPN mailbox inbox for unread replies.
+    support@ is a regular/shared mailbox (not an M365 group), so we read it
+    via /users/{upn}/mailFolders/inbox/messages.
     """
     token = await _get_token()
-
-    # First get the group ID from the email address
-    group_id = await _get_group_id(token)
-    if not group_id:
-        logger.error(f"Could not find M365 group for {SENDER_UPN}")
-        return []
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(
-                f"{GRAPH_BASE}/groups/{group_id}/conversations",
+                f"{GRAPH_BASE}/users/{SENDER_UPN}/mailFolders/inbox/messages",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"$top": 50},
+                params={
+                    "$filter":  "isRead eq false",
+                    "$top":     50,
+                    "$orderby": "receivedDateTime desc",
+                    "$select":  "id,subject,from,receivedDateTime,internetMessageId,internetMessageHeaders",
+                },
             )
             r.raise_for_status()
-            conversations = r.json().get("value", [])
+            messages = r.json().get("value", [])
     except Exception as e:
-        logger.error(f"Group inbox poll failed: {e}")
+        logger.error(f"Inbox poll failed for {SENDER_UPN}: {e}")
         return []
 
     results = []
-    for conv in conversations:
+    for msg in messages:
+        # Pull the In-Reply-To header so replies thread back to the sent email
+        in_reply_to = None
+        for h in (msg.get("internetMessageHeaders") or []):
+            if h.get("name", "").lower() == "in-reply-to":
+                in_reply_to = (h.get("value") or "").strip()
+                break
+
         results.append({
-            "graph_message_id": conv.get("id", ""),
-            "in_reply_to":      None,
-            "subject":          conv.get("topic", ""),
-            "from_email":       "",
-            "received_at":      conv.get("lastDeliveredDateTime", ""),
+            "graph_message_id": msg.get("id", ""),
+            "in_reply_to":      in_reply_to,
+            "subject":          msg.get("subject", ""),
+            "from_email":       (msg.get("from", {}) or {}).get("emailAddress", {}).get("address", ""),
+            "received_at":      msg.get("receivedDateTime", ""),
         })
 
+        # Mark read so the same reply isn't reprocessed on the next poll
+        if msg.get("id"):
+            await _mark_read(token, msg["id"])
+
     return results
-
-
-async def _get_group_id(token: str) -> str | None:
-    """Look up the M365 Group ID from its email address."""
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(
-                f"{GRAPH_BASE}/groups",
-                headers={"Authorization": f"Bearer {token}"},
-                params={"$filter": f"mail eq '{SENDER_UPN}'", "$select": "id,mail"},
-            )
-            r.raise_for_status()
-            groups = r.json().get("value", [])
-            if groups:
-                return groups[0]["id"]
-    except Exception as e:
-        logger.warning(f"Group lookup failed: {e}")
-    return None
 
 
 async def _mark_read(token: str, message_id: str):
