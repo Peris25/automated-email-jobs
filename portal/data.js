@@ -5,7 +5,7 @@
 
 const API = {
   baseUrl: '/api',
-  _token: null,
+  _token: localStorage.getItem('solvit_token') || null,
 
   async login(email, password) {
     const res = await fetch(`${this.baseUrl}/auth/login`, {
@@ -19,10 +19,23 @@ const API = {
     }
     const data = await res.json();
     this._token = data.token;
+    localStorage.setItem('solvit_token', data.token);
+    localStorage.setItem('solvit_user', JSON.stringify(data.user));
     return data.user;
   },
 
-  logout() { this._token = null; },
+  logout() {
+    this._token = null;
+    localStorage.removeItem('solvit_token');
+    localStorage.removeItem('solvit_user');
+  },
+
+  currentUser() {
+    try { return JSON.parse(localStorage.getItem('solvit_user') || 'null'); }
+    catch { return null; }
+  },
+
+  isLoggedIn() { return !!this._token; },
 
   _headers() {
     return {
@@ -51,6 +64,8 @@ const API = {
 
   _handleUnauth() {
     this._token = null;
+    localStorage.removeItem('solvit_token');
+    localStorage.removeItem('solvit_user');
     window.showLoginView && window.showLoginView();
     window.showToast && window.showToast('Session expired — please sign in again', 'warning');
   },
