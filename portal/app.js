@@ -439,6 +439,8 @@ async function loadIntegrationStatus() {
   const graphEl  = document.getElementById('integration-graph-status');
   const zohoEl   = document.getElementById('integration-zoho-status');
   const sourceEl = document.getElementById('integration-data-source');
+  const senderEl = document.getElementById('integration-sender');
+   if (senderEl) senderEl.textContent = status.sender_upn || '—';
 
   if (graphEl) {
     graphEl.textContent = status.graph?.status === 'connected'
