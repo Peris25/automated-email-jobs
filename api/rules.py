@@ -153,10 +153,8 @@ Solvit Valuations Team"""},
      "body": "Dear {{client_name}},\n\nWe sent you an email a few days ago regarding your vehicle valuation ({{vehicle_reg}}) and haven't heard back.\n\nThis is our final automated follow-up. Please reply or call us on +254 700 000 000.\n\nWarm regards,\nSolvit AM Team"},
 ]
 
-
-@router.post("/rules/seed")
-async def seed_defaults(user=Depends(get_current_user)):
-    """Seed rules + templates. Idempotent."""
+async def _seed_defaults():
+    """Seed rules + templates. Idempotent — inserts only what's missing."""
     now = NOW()
     rules_added = 0
     templates_added = 0
@@ -178,6 +176,11 @@ async def seed_defaults(user=Depends(get_current_user)):
             templates_added += 1
 
     return {"rules_added": rules_added, "templates_added": templates_added}
+
+
+@router.post("/rules/seed")
+async def seed_defaults(user=Depends(get_current_user)):
+    return await _seed_defaults()
 
 
 @router.get("/rules")
