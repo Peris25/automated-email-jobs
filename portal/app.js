@@ -130,6 +130,10 @@ async function init() {
     bindUpload();
     updateNavCount();
 
+    // Populate integration status (incl. sender email) on load,
+    // regardless of which view is active — the cards live in the Rules view.
+    loadIntegrationStatus();
+
     setTimeout(initCharts, 100);
 
     // Refresh feed every 60 seconds
@@ -440,7 +444,8 @@ async function loadIntegrationStatus() {
   const zohoEl   = document.getElementById('integration-zoho-status');
   const sourceEl = document.getElementById('integration-data-source');
   const senderEl = document.getElementById('integration-sender');
-   if (senderEl) senderEl.textContent = status.sender_upn || '—';
+
+  if (senderEl) senderEl.textContent = status.sender_upn || '—';
 
   if (graphEl) {
     graphEl.textContent = status.graph?.status === 'connected'
