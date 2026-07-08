@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from db.database import init_db
+from api.rules import _seed_defaults
 from api import jobs, activity, dashboard, auth, upload, zoho_sync, rules, conversion, solvers
 from scheduler.runner import start_scheduler
 
@@ -26,6 +27,7 @@ from scheduler.runner import start_scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await _seed_defaults()
     start_scheduler()
     yield
 
