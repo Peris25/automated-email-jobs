@@ -17,6 +17,7 @@ const REASON_CLASS  = {
 const PHASE_LABEL = { 1: 'Scheduling', 2: 'Inspection', 3: 'Approval' };
 
 const STATE = { jobs: [], activity: [], feed: [], kpis: {}, charts: {} };
+let _feedInterval = null;
 
 /* =====================================================
    TOAST NOTIFICATIONS
@@ -80,6 +81,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
 
 document.getElementById('logout-btn').addEventListener('click', () => {
   API.logout();
+  if (_feedInterval) { clearInterval(_feedInterval); _feedInterval = null; }
   showLoginView();
 });
 
@@ -136,8 +138,10 @@ async function init() {
 
     setTimeout(initCharts, 100);
 
-    // Refresh feed every 60 seconds
-    setInterval(async () => {
+    // Refresh feed every 60 seconds — clear any prior interval so we
+    // never stack duplicates or keep polling after logout.
+    if (_feedInterval) clearInterval(_feedInterval);
+    _feedInterval = setInterval(async () => {
       const fresh = await API.getLiveFeed();
       if (fresh) { STATE.feed = fresh; renderFeed(); }
     }, 60000);
@@ -392,7 +396,7 @@ function bindUpload() {
         let summaryTxt = '';
         if (result.solver_summary && result.solver_summary.summaries_queued > 0) {
           const s = result.solver_summary;
-          summaryTxt = ` · ${s.summaries_queued} solver ${s.summaries_queued === 1 ? 'summary' : 'summaries'} queued (${s.jobs_covered} jobs)`;
+          summaryTxt = ` · ${s.summaries_queued} solver ${s.summaries_queued === 1 ? 'summary' : 'summaries'} sent (${s.jobs_covered} jobs)`;
           if (s.warnings && s.warnings.length) {
             summaryTxt += ` · ${s.warnings.length} solver(s) skipped`;
             setTimeout(() => {
@@ -582,6 +586,13 @@ function escapeAttr(s) {
 
 async function initCharts() {
   try {
+    // Destroy any existing charts first, otherwise Chart.js throws
+    // "Canvas is already in use" when init() runs more than once.
+    if (STATE.charts) {
+      Object.values(STATE.charts).forEach(c => { try { c && c.destroy(); } catch (e) {} });
+    }
+    STATE.charts = {};
+
     const [volumeData, reasonData] = await Promise.all([
       API.getEmailVolumeChart(),
       API.getReasonChart()
