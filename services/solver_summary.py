@@ -13,6 +13,7 @@ from typing import Iterable
 import sqlalchemy as sa
 
 from db.database import database, solvers as solvers_table, email_log, phase_settings
+from services.graph import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -141,23 +142,43 @@ async def build_solver_summaries(
         body    = _build_email_body(solver_name, jobs_sorted, phase)
         anchor_job_id = jobs_sorted[0].get("id") or "BULK"
 
+        # Actually send the summary via Microsoft Graph. cc_emails may be a
+        # comma-separated string ("cs-team@solvit.co.ke"); send_email wants a list.
+        cc_list = [c.strip() for c in (cc_emails or "").split(",") if c.strip()]
+        try:
+            result = await send_email(email_addr, subject, body, cc_emails=cc_list or None)
+            status = "sent"
+        except Exception as e:
+            result = {}
+            status = "failed"
+            warnings.append(
+                f"Failed to send summary to {solver_name} <{email_addr}>: {e}"
+            )
+            logger.error(
+                f"Solver summary send failed: {solver_name} <{email_addr}> — {e}"
+            )
+
         await database.execute(
             email_log.insert().values(
-                job_id           = anchor_job_id,
-                sent_at          = now_iso,
-                template_key     = "solver_summary",
-                subject          = subject,
-                to_email         = email_addr,
-                cc_emails        = cc_emails,
-                delivery_status  = "queued",
+                job_id              = anchor_job_id,
+                sent_at             = now_iso,
+                template_key        = "solver_summary",
+                subject             = subject,
+                to_email            = email_addr,
+                cc_emails           = cc_emails,
+                graph_message_id    = result.get("graph_message_id", ""),
+                internet_message_id = result.get("internet_message_id", ""),
+                delivery_status     = status,
             )
         )
-        summaries_queued += 1
-        jobs_covered    += len(jobs_sorted)
-        logger.info(
-            f"Queued solver summary: {solver_name} <{email_addr}> "
-            f"with {len(jobs_sorted)} jobs (upload_id={upload_id}, phase={phase})"
-        )
+
+        if status == "sent":
+            summaries_queued += 1
+            jobs_covered    += len(jobs_sorted)
+            logger.info(
+                f"Sent solver summary: {solver_name} <{email_addr}> "
+                f"with {len(jobs_sorted)} jobs (upload_id={upload_id}, phase={phase})"
+            )
 
     return {
         "summaries_queued": summaries_queued,
