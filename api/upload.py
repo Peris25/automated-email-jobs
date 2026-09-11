@@ -15,12 +15,13 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from pydantic import BaseModel
 import pandas as pd
 import sqlalchemy as sa
 
 from db.database import (
     database, jobs as jobs_table, uploads as uploads_table,
-    job_snapshots as snapshots_table,
+    job_snapshots as snapshots_table, email_log as email_log_table,
 )
 from api.auth import get_current_user
 
@@ -458,6 +459,57 @@ async def list_uploads(user=Depends(get_current_user)):
         uploads_table.select().order_by(sa.desc(uploads_table.c.uploaded_at))
     )
     return rows
+
+
+class ResetRequest(BaseModel):
+    confirm: str = ""
+
+
+async def _count_rows(table) -> int:
+    row = await database.fetch_one(sa.select(sa.func.count()).select_from(table))
+    if not row:
+        return 0
+    return list(row.values())[0] or 0
+
+
+@router.post("/reset")
+async def reset_job_data(payload: ResetRequest, user=Depends(get_current_user)):
+    """
+    Clear all operational job data so a fresh cycle can be uploaded.
+
+    Wipes:      jobs, job_snapshots, email_log, uploads (upload history).
+    Preserves:  solvers, email_rules, email_templates, phase_settings (config).
+
+    Requires an explicit confirmation token in the body — {"confirm": "CLEAR"} —
+    as a server-side guard so the endpoint can never wipe data on an accidental
+    or empty call. This is irreversible.
+    """
+    if (payload.confirm or "").strip().upper() != "CLEAR":
+        raise HTTPException(
+            status_code=400,
+            detail='Confirmation required. Send {"confirm": "CLEAR"} to clear all job data.',
+        )
+
+    counts = {
+        "jobs":          await _count_rows(jobs_table),
+        "job_snapshots": await _count_rows(snapshots_table),
+        "email_log":     await _count_rows(email_log_table),
+        "uploads":       await _count_rows(uploads_table),
+    }
+
+    # Delete children before parents so foreign keys stay satisfied on Postgres:
+    #   email_log.job_id      -> jobs.id
+    #   job_snapshots.upload_id -> uploads.id
+    await database.execute(sa.delete(email_log_table))
+    await database.execute(sa.delete(snapshots_table))
+    await database.execute(sa.delete(jobs_table))
+    await database.execute(sa.delete(uploads_table))
+
+    total = sum(counts.values())
+    who = user if isinstance(user, str) else "system"
+    logger.warning(f"Job data cleared by {who}: {counts} ({total} rows total)")
+
+    return {"ok": True, "cleared": counts, "total_cleared": total}
 
 
 @router.patch("/{upload_id}/baseline")

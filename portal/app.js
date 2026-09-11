@@ -1014,14 +1014,26 @@ async function loadUploads() {
   if (!el) return;
   el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-tertiary);font-size:13px;">Loading upload history…</div>';
 
+  const dangerZone = `
+    <div class="panel" style="margin-top:24px;border:1px solid var(--danger-soft);">
+      <div class="panel-header"><h3 style="color:var(--danger-text);">Danger zone</h3></div>
+      <div style="padding:16px 20px;">
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">
+          Clear all job data to start a fresh cycle. This wipes jobs, upload history, email logs and
+          snapshots, but keeps your solvers, rules, templates and phase settings. Upload your new file
+          afterwards from the Pending jobs tab.
+        </p>
+        <button class="btn-danger" id="open-reset-btn">Clear all job data</button>
+      </div>
+    </div>`;
+
   try {
     const uploads = await API.getUploadHistory().catch(() => []);
+    let bodyHtml;
     if (!uploads || !uploads.length) {
-      el.innerHTML = '<div class="info-banner">No uploads yet. Use the Upload button on the Pending jobs tab to import a Zoho export.</div>';
-      return;
-    }
-
-    el.innerHTML = `
+      bodyHtml = '<div class="info-banner">No uploads yet. Use the Upload button on the Pending jobs tab to import a Zoho export.</div>';
+    } else {
+      bodyHtml = `
       <div class="info-banner">
         Click <strong>Set as baseline</strong> to fix an upload as the starting point for conversion analysis.
         If none is set, the system compares the two most recent uploads.
@@ -1046,8 +1058,82 @@ async function loadUploads() {
             </div>`).join('')}
         </div>
       </div>`;
+    }
+    el.innerHTML = bodyHtml + dangerZone;
   } catch (err) {
-    el.innerHTML = `<div class="info-banner" style="background:var(--danger-soft);color:var(--danger-text);">Failed to load: ${err.message}</div>`;
+    el.innerHTML = `<div class="info-banner" style="background:var(--danger-soft);color:var(--danger-text);">Failed to load: ${err.message}</div>` + dangerZone;
+  }
+
+  document.getElementById('open-reset-btn')?.addEventListener('click', openResetModal);
+}
+
+/* =====================================================
+   CLEAR JOB DATA (danger zone)
+   ===================================================== */
+
+function openResetModal() {
+  const modal = document.getElementById('reset-modal');
+  const input = document.getElementById('reset-confirm-input');
+  const btn   = document.getElementById('reset-confirm-btn');
+  if (!modal || !input || !btn) return;
+
+  input.value = '';
+  btn.disabled = true;
+  btn.textContent = 'Clear all job data';
+  modal.style.display = 'flex';
+  input.focus();
+
+  input.oninput = () => { btn.disabled = input.value.trim().toUpperCase() !== 'CLEAR'; };
+  btn.onclick = confirmReset;
+  modal.querySelectorAll('[data-close-reset]').forEach(elm => { elm.onclick = closeResetModal; });
+}
+
+function closeResetModal() {
+  const modal = document.getElementById('reset-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function confirmReset() {
+  const btn   = document.getElementById('reset-confirm-btn');
+  const input = document.getElementById('reset-confirm-input');
+  if (!btn || !input) return;
+  if (input.value.trim().toUpperCase() !== 'CLEAR') return;
+
+  btn.disabled = true;
+  btn.textContent = 'Clearing…';
+  try {
+    const res = await API.resetJobData('CLEAR');
+    const total = (res && res.total_cleared) || 0;
+    showToast(`Cleared ${total} record${total === 1 ? '' : 's'}. You can now upload new data.`, 'success');
+    closeResetModal();
+    await refreshCoreData();
+    loadUploads();
+  } catch (err) {
+    showToast('Clear failed: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Clear all job data';
+  }
+}
+window.openResetModal = openResetModal;
+
+// Re-fetch and re-render the jobs/KPIs/feed views after a data change,
+// without re-binding one-time UI handlers the way init() does.
+async function refreshCoreData() {
+  try {
+    const [jobs, kpis, activity, feed] = await Promise.all([
+      API.getJobs(), API.getKpis(), API.getActivity(), API.getLiveFeed()
+    ]);
+    STATE.jobs     = jobs     || [];
+    STATE.kpis     = kpis     || {};
+    STATE.activity = activity || [];
+    STATE.feed     = feed     || [];
+    renderKpis();
+    renderFeed();
+    renderJobs();
+    renderActivity();
+    updateNavCount();
+  } catch (err) {
+    // Non-fatal — the clear already succeeded; a manual refresh will catch up.
   }
 }
 

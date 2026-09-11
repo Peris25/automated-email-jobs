@@ -427,6 +427,31 @@
     <div class="modal-content" id="job-modal-content"></div>
   </div>
 
+  <!-- CLEAR DATA CONFIRM MODAL -->
+  <div id="reset-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" data-close-reset></div>
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2>Clear all job data</h2>
+        <button class="modal-close" data-close-reset>&times;</button>
+      </div>
+      <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">
+        This permanently deletes all <strong>jobs</strong>, <strong>upload history</strong>,
+        <strong>email logs</strong> and <strong>snapshots</strong>. Your solvers, email rules,
+        templates and phase settings are kept.
+      </p>
+      <p style="font-size:13px;color:var(--danger-text);background:var(--danger-soft);padding:10px 12px;border-radius:8px;margin-bottom:16px;">
+        This cannot be undone. Type <strong>CLEAR</strong> below to confirm.
+      </p>
+      <input id="reset-confirm-input" type="text" placeholder="Type CLEAR to confirm" autocomplete="off"
+        style="width:100%;height:42px;padding:0 12px;border:1px solid var(--border-subtle);border-radius:8px;font-size:14px;margin-bottom:16px;box-sizing:border-box;" />
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn-secondary" data-close-reset>Cancel</button>
+        <button class="btn-danger" id="reset-confirm-btn" disabled>Clear all job data</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
