@@ -155,6 +155,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
 
 .btn-primary:hover { background: #2C2A26; }
 
+.btn-danger {
+  height: 42px; padding: 0 18px;
+  background: var(--danger); color: #fff;
+  border: none; border-radius: var(--radius-md);
+  font-weight: 500; font-size: 14px;
+  transition: background 0.15s ease;
+}
+.btn-danger:hover { background: #9E2B2B; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* =====================================================
    APP SHELL
    ===================================================== */

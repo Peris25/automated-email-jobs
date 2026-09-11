@@ -73,34 +73,55 @@ async def send_email(
   body: str,
   reply_to_message_id: str | None = None,
   cc_emails: list[str] | None = None,
+  attachments: list[dict] | None = None,
 ) -> dict:
     """
     Send an email from cs-team@solvit.co.ke.
     Returns dict with graph_message_id and internet_message_id.
+
+    attachments: optional list of dicts, each with:
+        {
+            "name":          "filename.xlsx",
+            "content_type":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "content_bytes": <raw bytes>   # base64-encoded here before sending
+        }
     """
+    import base64
+
     token = await _get_token()
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type":  "application/json",
     }
 
-    payload: dict = {
-        "message": {
-            "subject": subject,
-            "body":    {"contentType": "HTML", "content": body},
-            "from":    {"emailAddress": {"address": SENDER_UPN}},
-            "toRecipients": [{"emailAddress": {"address": to_email}}],
-            "replyTo": [{"emailAddress": {"address": SENDER_UPN}}],
-            **({"ccRecipients": [{"emailAddress": {"address": cc}} for cc in cc_emails]} if cc_emails else {}),
-        },
-        "saveToSentItems": True,
+    message: dict = {
+        "subject": subject,
+        "body":    {"contentType": "HTML", "content": body},
+        "from":    {"emailAddress": {"address": SENDER_UPN}},
+        "toRecipients": [{"emailAddress": {"address": to_email}}],
+        "replyTo": [{"emailAddress": {"address": SENDER_UPN}}],
     }
 
-    # Thread replies to this email if we have a prior message ID
+    if cc_emails:
+        message["ccRecipients"] = [{"emailAddress": {"address": cc}} for cc in cc_emails]
+
+    if attachments:
+        message["attachments"] = [
+            {
+                "@odata.type":  "#microsoft.graph.fileAttachment",
+                "name":         att["name"],
+                "contentType":  att.get("content_type", "application/octet-stream"),
+                "contentBytes": base64.b64encode(att["content_bytes"]).decode("utf-8"),
+            }
+            for att in attachments
+        ]
+
+    payload: dict = {"message": message, "saveToSentItems": True}
+
     if reply_to_message_id:
         payload["message"]["conversationId"] = reply_to_message_id
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:   # longer timeout for attachments
         SEND_AS_UPN = os.getenv("MS_SEND_AS_UPN", SENDER_UPN)
         r = await client.post(
             f"{GRAPH_BASE}/users/{SEND_AS_UPN}/sendMail",
@@ -109,7 +130,6 @@ async def send_email(
         )
         r.raise_for_status()
 
-    # Fetch the sent message to get its IDs for reply tracking
     graph_id, internet_id = await _get_last_sent_ids(token)
     logger.info(f"Email sent to {to_email} | subject: {subject}")
     return {"graph_message_id": graph_id, "internet_message_id": internet_id}

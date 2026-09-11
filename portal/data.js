@@ -131,6 +131,16 @@ const API = {
     return res.json();
   },
 
+  // Danger zone — clear all operational job data (keeps config)
+  async resetJobData(confirm) {
+    const res = await fetch(`${this.baseUrl}/upload/reset`, {
+      method: 'POST', headers: this._headers(), body: JSON.stringify({ confirm })
+    });
+    if (res.status === 401) { this._handleUnauth(); return null; }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Reset failed'); }
+    return res.json();
+  },
+
   // Upload history
   async getUploadHistory()    { return this._get('/upload/history'); },
   async setUploadBaseline(id) {
