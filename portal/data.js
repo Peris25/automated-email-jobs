@@ -81,6 +81,15 @@ const API = {
   async getLiveFeed()          { return this._get('/feed/live'); },
   async getIntegrationStatus() { return this._get('/integrations/status'); },
 
+  async sendTestEmail(to) {
+    const res = await fetch(`${this.baseUrl}/integrations/test-email?to=${encodeURIComponent(to)}`, {
+      method: 'POST', headers: this._headers()
+    });
+    if (res.status === 401) { this._handleUnauth(); return null; }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Test send failed'); }
+    return res.json();
+  },
+
   async triggerZohoSync() {
     const res = await fetch(`${this.baseUrl}/zoho/sync`, {
       method: 'POST', headers: this._headers()

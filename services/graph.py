@@ -128,10 +128,23 @@ async def send_email(
             headers=headers,
             json=payload,
         )
+        if r.status_code >= 400:
+            # Surface Graph's actual error body — raise_for_status() alone
+            # hides it, which makes genuine send failures look like clean logs.
+            logger.error(
+                f"Graph sendMail rejected [{r.status_code}] "
+                f"sent_as={SEND_AS_UPN} from={SENDER_UPN} to={to_email}: {r.text[:1000]}"
+            )
         r.raise_for_status()
 
+    # Fetch the sent message to get its IDs for reply tracking. An empty
+    # result here means Graph accepted the send but saved nothing to the
+    # sender's Sent Items — a useful signal when mail "sends" but vanishes.
     graph_id, internet_id = await _get_last_sent_ids(token)
-    logger.info(f"Email sent to {to_email} | subject: {subject}")
+    logger.info(
+        f"Graph sendMail accepted [{r.status_code}] to {to_email} | subject: {subject} "
+        f"| sent_items_copy={'yes' if graph_id else 'NONE'}"
+    )
     return {"graph_message_id": graph_id, "internet_message_id": internet_id}
 
 
@@ -226,3 +239,54 @@ async def check_graph_connection() -> dict:
         return {"status": "connected", "sender": SENDER_UPN}
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+async def send_test_email(to_email: str) -> dict:
+    """
+    Diagnostic send: returns the RAW Microsoft Graph result (status code and
+    response body) instead of hiding it behind an exception.
+
+    A normal send that logs as "sent" only tells us Graph returned 2xx. When
+    mail is accepted but never arrives, the answer is in the status code and
+    body — this exposes both so the cause (permissions, licensing, an invalid
+    from-address, a tenant transport block) is visible without digging logs.
+    """
+    SEND_AS_UPN = os.getenv("MS_SEND_AS_UPN", SENDER_UPN)
+    try:
+        token = await _get_token()
+    except Exception as e:
+        return {"ok": False, "stage": "token", "error": str(e),
+                "sent_as": SEND_AS_UPN, "from_address": SENDER_UPN, "to": to_email}
+
+    payload = {
+        "message": {
+            "subject": "Solvit portal — test email",
+            "body": {"contentType": "HTML",
+                     "content": "<p>This is a test email from the Solvit portal diagnostic. "
+                                "If you received it, outbound email is working.</p>"},
+            "from": {"emailAddress": {"address": SENDER_UPN}},
+            "toRecipients": [{"emailAddress": {"address": to_email}}],
+        },
+        "saveToSentItems": True,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"{GRAPH_BASE}/users/{SEND_AS_UPN}/sendMail",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json=payload,
+            )
+    except Exception as e:
+        return {"ok": False, "stage": "request", "error": str(e),
+                "sent_as": SEND_AS_UPN, "from_address": SENDER_UPN, "to": to_email}
+
+    body = (r.text or "").strip()
+    logger.info(f"Test email to {to_email}: Graph returned [{r.status_code}] {body[:500]}")
+    return {
+        "ok": r.status_code < 400,
+        "status_code": r.status_code,
+        "graph_response": body[:2000] or "(empty body — Graph accepted the request)",
+        "sent_as": SEND_AS_UPN,
+        "from_address": SENDER_UPN,
+        "to": to_email,
+    }

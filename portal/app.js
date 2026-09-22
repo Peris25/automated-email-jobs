@@ -466,6 +466,37 @@ async function loadIntegrationStatus() {
   if (sourceEl) {
     sourceEl.textContent = status.data_source === 'zoho' ? 'Zoho Analytics (auto-sync every 15 min)' : 'Manual CSV / Excel upload';
   }
+
+  // Diagnostic: send a real test email and show the raw Graph result.
+  const testBtn    = document.getElementById('graph-test-btn');
+  const testResult = document.getElementById('integration-graph-test-result');
+  if (testBtn && !testBtn._bound) {
+    testBtn._bound = true;
+    testBtn.addEventListener('click', async () => {
+      const to = prompt('Send a test email to which address?');
+      if (!to || !to.trim()) return;
+      testBtn.disabled = true;
+      testBtn.textContent = 'Sending…';
+      if (testResult) { testResult.textContent = ''; testResult.style.color = ''; }
+      try {
+        const res = await API.sendTestEmail(to.trim());
+        const ok = !!(res && res.ok);
+        if (testResult) {
+          testResult.style.color = ok ? 'var(--success)' : 'var(--danger)';
+          testResult.textContent = ok
+            ? `✓ Graph accepted [${res.status_code}] as ${res.sent_as}. If it doesn't arrive, the block is tenant-side delivery, not the app.`
+            : `✗ [${res.status_code || res.stage || 'error'}] ${res.graph_response || res.error || 'send failed'}`;
+        }
+        showToast(ok ? 'Graph accepted the test email' : 'Test email failed — see details under the card', ok ? 'success' : 'error');
+      } catch (e) {
+        if (testResult) { testResult.style.color = 'var(--danger)'; testResult.textContent = '✗ ' + e.message; }
+        showToast('Test failed: ' + e.message, 'error');
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = 'Send test email';
+      }
+    });
+  }
 }
 
 /* =====================================================
