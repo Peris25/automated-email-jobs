@@ -116,3 +116,14 @@ async def get_integration_status(user=Depends(get_current_user)):
         "data_source": os.getenv("DATA_SOURCE", "csv"),
         "sender_upn":  os.getenv("MS_SENDER_UPN", "cs-team@solvit.co.ke"),
     }
+
+
+@router.post("/integrations/test-email")
+async def send_test(to: str, user=Depends(get_current_user)):
+    """
+    Send a diagnostic test email and return the raw Microsoft Graph result
+    (status code + response body), so a send that "succeeds" but never
+    arrives can be pinned to its real cause.
+    """
+    from services.graph import send_test_email
+    return await send_test_email(to)
