@@ -1,0 +1,9 @@
+Flask==3.1.1
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.41
+gunicorn==23.0.0
+openai==1.91.0
+PyMuPDF==1.26.3
+psycopg2-binary==2.9.10
+python-dotenv==1.1.1
+requests==2.32.4

@@ -1,0 +1,95 @@
+{% extends "admin/layout.html" %}
+{% block title %}SI-{{ req.id }}{% endblock %}
+{% block admin %}
+{% macro check(value) %}{% if value is none %}<span class="text-muted">n/a</span>{% elif value %}<span class="text-success">yes</span>{% else %}<span class="text-danger">no</span>{% endif %}{% endmacro %}
+
+<h2 class="h4">SI-{{ req.id }} <span class="badge text-bg-secondary">{{ req.status.replace("_", " ") }}</span></h2>
+
+{% if req.hold_reason_list() %}
+<div class="alert alert-warning">
+  <strong>Held because:</strong>
+  <ul class="mb-0">{% for r in req.hold_reason_list() %}<li>{{ r }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <h3 class="h6 text-uppercase text-muted">Client</h3>
+    <table class="table table-sm">
+      <tr><th>Name</th><td>{{ req.full_name }}</td></tr>
+      <tr><th>Phone</th><td>{{ req.phone }}</td></tr>
+      <tr><th>Email</th><td>{{ req.email or "" }}</td></tr>
+      <tr><th>Reg (submitted)</th><td>{{ req.reg or "" }}</td></tr>
+      <tr><th>Reg (read from logbook)</th><td>{{ req.reg_from_logbook or "" }}</td></tr>
+      <tr><th>Insurer selected</th><td>{{ req.insurer.name if req.insurer else "" }}{% if req.insurer %} <small class="text-muted">({{ req.insurer.solvit_company_id }})</small>{% endif %}</td></tr>
+      <tr><th>Location</th><td>{{ req.location_text or "" }}{% if req.latitude %} <small class="text-muted">({{ req.latitude }}, {{ req.longitude }})</small>{% endif %}</td></tr>
+      <tr><th>Preferred time</th><td>{{ req.preferred_at.strftime("%d %b %Y %H:%M") if req.preferred_at else "Not given" }}</td></tr>
+      <tr><th>Source</th><td>{{ req.source or "" }}</td></tr>
+      <tr><th>Created / submitted</th><td>{{ req.created_at.strftime("%d %b %Y %H:%M") }}{% if req.submitted_at %} / {{ req.submitted_at.strftime("%d %b %Y %H:%M") }}{% endif %} UTC</td></tr>
+    </table>
+
+    <h3 class="h6 text-uppercase text-muted mt-4">Read from the letter</h3>
+    <table class="table table-sm">
+      <tr><th>Insurer on letter</th><td>{{ req.letter_insurer_text or "(unreadable)" }}</td></tr>
+      <tr><th>Letter date</th><td>{{ req.letter_date.strftime("%d %b %Y") if req.letter_date else "(unreadable)" }}</td></tr>
+      <tr><th>Reg on letter</th><td>{{ req.letter_reg or "" }}</td></tr>
+      <tr><th>Reference</th><td>{{ req.letter_reference or "" }}</td></tr>
+      <tr><th>Insurer matches</th><td>{{ check(req.insurer_match) }}</td></tr>
+      <tr><th>Date within window</th><td>{{ check(req.date_ok) }}</td></tr>
+      <tr><th>Reg matches (info only)</th><td>{{ check(req.reg_match) }}</td></tr>
+    </table>
+
+    {% if req.solvit_response %}
+    <h3 class="h6 text-uppercase text-muted mt-4">Solvit response</h3>
+    <pre class="bg-light p-2 small" style="white-space: pre-wrap;">{{ req.solvit_response }}</pre>
+    {% endif %}
+    {% if req.reviewed_by_note %}<p><strong>Review note:</strong> {{ req.reviewed_by_note }}</p>{% endif %}
+
+    {% if req.status in ("held", "send_failed") %}
+    <h3 class="h6 text-uppercase text-muted mt-4">Review</h3>
+    <form method="POST" action="/admin/requests/{{ req.id }}/approve" class="card p-3 mb-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="row g-2">
+        <div class="col-sm-5">
+          <label class="form-label small">Reg</label>
+          <input name="reg" class="form-control form-control-sm" value="{{ req.reg or '' }}">
+        </div>
+        <div class="col-sm-7">
+          <label class="form-label small">Insurer</label>
+          <select name="insurer_id" class="form-select form-select-sm">
+            {% for i in insurers %}<option value="{{ i.id }}" {% if req.insurer and i.id == req.insurer.id %}selected{% endif %}>{{ i.name }}{% if not i.active %} (inactive){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Note</label>
+          <input name="note" class="form-control form-control-sm" placeholder="e.g. Called APA, letter confirmed">
+        </div>
+      </div>
+      <button class="btn btn-success btn-sm mt-3">{% if req.status == "send_failed" %}Retry sending to Solvit{% else %}Approve and create job in Solvit{% endif %}</button>
+    </form>
+    <form method="POST" action="/admin/requests/{{ req.id }}/reject" class="card p-3" onsubmit="return confirm('Reject this request?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input name="note" class="form-control form-control-sm mb-2" placeholder="Reason for rejecting">
+      <button class="btn btn-outline-danger btn-sm">Reject</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-6">
+    {% for kind, label in (("letter", "Instruction letter"), ("logbook", "Logbook")) %}
+      {% set d = req.document(kind) %}
+      <h3 class="h6 text-uppercase text-muted">{{ label }}</h3>
+      {% if d %}
+        <p><a href="/admin/documents/{{ d.id }}" target="_blank">Open {{ d.filename }}</a></p>
+        {% if d.mime_type == "application/pdf" %}
+          <iframe src="/admin/documents/{{ d.id }}" style="width:100%; height:420px;" class="border mb-4"></iframe>
+        {% else %}
+          <img src="/admin/documents/{{ d.id }}" class="img-fluid border mb-4" alt="{{ label }}">
+        {% endif %}
+      {% else %}
+        <p class="text-muted">Missing</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
