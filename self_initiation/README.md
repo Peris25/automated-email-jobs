@@ -81,8 +81,9 @@ restrict which sites may embed it.
 
 | Item | Where it plugs in |
 |------|-------------------|
-| Solvit login endpoint URL | `SOLVIT_AUTH_URL` |
 | Production insurer list | Admin, then Insurers, then Import |
 | Who owns the held-request queue | Admin access via `ADMIN_PASSWORD` |
 
-Settled: broker alias created, payment type stays `1`, documents cannot go through the API.
+Settled: broker alias created, payment type stays `1`, documents cannot go through the API, insurer IDs are the
+short numeric `id` from the insurer master, and login is `<SOLVIT_BASE_URL>/api/insurance-login`
+(override with `SOLVIT_AUTH_URL` if production differs).

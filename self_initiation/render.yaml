@@ -20,8 +20,6 @@ services:
         sync: false
       - key: SOLVIT_BASE_URL
         value: https://solvit.staging9.com   # switch to https://login.solvit.limited for production
-      - key: SOLVIT_AUTH_URL
-        sync: false
       - key: SOLVIT_USERNAME
         sync: false
       - key: SOLVIT_PASSWORD

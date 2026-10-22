@@ -197,3 +197,15 @@ def test_csrf_enforced(app):
 def test_normalize_reg():
     assert ocr.normalize_reg("kda-421x") == "KDA 421X"
     assert ocr.normalize_reg("KBZ 12") == "KBZ12"
+
+
+def test_staging_urls_derive_from_base_url(monkeypatch):
+    import importlib
+    monkeypatch.setenv("SOLVIT_BASE_URL", "https://solvit.staging9.com/")
+    monkeypatch.delenv("SOLVIT_AUTH_URL", raising=False)
+    monkeypatch.delenv("SOLVIT_API_URL", raising=False)
+    mod = importlib.reload(solvit)
+    assert mod.SOLVIT_AUTH_URL == "https://solvit.staging9.com/api/insurance-login"
+    assert mod.SOLVIT_API_URL == "https://solvit.staging9.com/api/request/schedule-initiate-request"
+    monkeypatch.undo()
+    importlib.reload(solvit)

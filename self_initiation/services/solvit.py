@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 # Staging: https://solvit.staging9.com   Production: https://login.solvit.limited
 SOLVIT_BASE_URL = os.getenv("SOLVIT_BASE_URL", "https://login.solvit.limited").rstrip("/")
 SOLVIT_API_URL = os.getenv("SOLVIT_API_URL") or f"{SOLVIT_BASE_URL}/api/request/schedule-initiate-request"
+SOLVIT_AUTH_URL = os.getenv("SOLVIT_AUTH_URL") or f"{SOLVIT_BASE_URL}/api/insurance-login"
 TIMEOUT = 30
 
 
@@ -26,7 +27,7 @@ def normalize_phone_for_solvit(phone: str) -> str:
 
 def get_solvit_token() -> str:
     res = requests.post(
-        os.getenv("SOLVIT_AUTH_URL"),
+        SOLVIT_AUTH_URL,
         json={"email": os.getenv("SOLVIT_USERNAME"), "password": os.getenv("SOLVIT_PASSWORD")},
         timeout=TIMEOUT,
     )
