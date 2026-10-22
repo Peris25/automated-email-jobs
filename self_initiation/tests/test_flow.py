@@ -32,9 +32,9 @@ def sent(monkeypatch):
     return calls
 
 
-def upload(client, letter=PDF, phone="0712345678"):
+def upload(client, letter=PDF, phone="0712345678", email="jane@example.com"):
     return client.post("/self-initiate", data={
-        "firstName": "Jane", "lastName": "Wanjiku", "phone": phone, "email": "",
+        "firstName": "Jane", "lastName": "Wanjiku", "phone": phone, "email": email,
         "letter": (io.BytesIO(letter), "letter.pdf"),
         "logbook": (io.BytesIO(PNG), "logbook.png"),
     }, content_type="multipart/form-data")
@@ -63,6 +63,7 @@ def test_happy_path_creates_job(client, fake_ocr, sent):
     assert p["vehicleRegNo"] == "KDA 421X"
     assert p["customerMobile"] == "712345678"
     assert p["paymentType"] == "1"
+    assert p["email"] == "jane@example.com"
     assert p["latitude"] == ""
     assert "CLM/123" in p["comment"] and "/admin/requests/" in p["comment"]
     assert "Your valuation is booked" in client.get("/self-initiate/done").get_data(as_text=True)
@@ -105,10 +106,10 @@ def test_solvit_failure_is_kept_for_retry(client, fake_ocr, monkeypatch):
 
 
 def test_upload_validation(client, fake_ocr):
-    r = upload(client, letter=b"not a real file", phone="12345")
+    r = upload(client, letter=b"not a real file", phone="12345", email="")
     assert r.status_code == 400
     page = r.get_data(as_text=True)
-    assert "valid Kenyan mobile" in page and "instruction letter" in page
+    assert "valid Kenyan mobile" in page and "instruction letter" in page and "valid email" in page
     assert SelfInitRequest.query.count() == 0
 
 
@@ -149,6 +150,33 @@ def test_admin_rejects(client, fake_ocr, sent):
     client.post(f"/admin/requests/{req.id}/reject", data={"note": "fake letter"})
     db.session.refresh(req)
     assert req.status == "rejected" and sent == []
+
+
+def test_insurer_master_xlsx_import(client):
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["id", "name", "email"])
+    ws.append([45, "Britam", "someone@example.com"])
+    ws.append([83, "Geminia Insurance Company Limited", "x@example.com"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    login(client)
+    client.post("/admin/insurers/import", data={"file": (buf, "insurance_company_master.xlsx")},
+                content_type="multipart/form-data")
+    assert Insurer.query.filter_by(name="Britam").one().solvit_company_id == "45"
+    assert Insurer.query.filter_by(name="Geminia Insurance Company Limited").one().solvit_company_id == "83"
+
+
+def test_staging_seed_file_loads(app):
+    from services.insurers import read_rows, upsert
+    with open("data/insurers_staging.csv", "rb") as f:
+        rows = read_rows("insurers_staging.csv", f.read())
+    added, updated, problems = upsert(rows)
+    assert problems == [] and added + updated == 30
+    assert Insurer.query.filter_by(name="ICEA Lion").one().solvit_company_id == "18"
+    assert "email" not in rows[0]  # contact emails are deliberately not stored in the repo
 
 
 def test_insurer_csv_import(client):

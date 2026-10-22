@@ -49,6 +49,8 @@ def create_app(config: dict | None = None) -> Flask:
 
     with app.app_context():
         db.create_all()
+        from services.insurers import seed_if_empty
+        seed_if_empty(os.getenv("INSURERS_SEED_FILE"))
 
     @app.before_request
     def check_csrf():

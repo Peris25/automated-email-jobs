@@ -35,9 +35,9 @@
   <div class="col-lg-4">
     <form method="POST" action="/admin/insurers/import" enctype="multipart/form-data" class="card p-3 mb-4">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <h3 class="h6">Import from CSV</h3>
-      <p class="small text-muted mb-2">Columns: <code>name, solvit_company_id, aliases, active</code>. Existing insurers are updated by name.</p>
-      <input type="file" name="file" accept=".csv,text/csv" class="form-control form-control-sm mb-2" required>
+      <h3 class="h6">Import insurer list</h3>
+      <p class="small text-muted mb-2">Upload the Solvit insurer master export (.xlsx with <code>id, name</code>) or a CSV with <code>name, solvit_company_id, aliases, active</code>. Existing insurers are updated by name, so re-importing is safe.</p>
+      <input type="file" name="file" accept=".xlsx,.csv" class="form-control form-control-sm mb-2" required>
       <button class="btn btn-primary btn-sm">Import</button>
     </form>
 

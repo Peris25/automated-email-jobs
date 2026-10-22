@@ -1,7 +1,5 @@
 """Internal pages: the review queue for held requests and the insurer list."""
 
-import csv
-import io
 import os
 import secrets
 from functools import wraps
@@ -10,7 +8,7 @@ from flask import Blueprint, Response, abort, flash, redirect, render_template, 
 from sqlalchemy import func
 
 from models import STATUSES, Document, Insurer, SelfInitRequest, db
-from services import workflow
+from services import insurers, workflow
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin", template_folder="../templates")
 
@@ -119,7 +117,7 @@ def document(doc_id):
 
 @admin_bp.route("/insurers", methods=["GET", "POST"])
 @login_required
-def insurers():
+def insurers_page():
     if request.method == "POST":
         insurer_id = request.form.get("id")
         name = request.form.get("name", "").strip()
@@ -145,45 +143,20 @@ def insurers():
     return render_template("admin/insurers.html", rows=rows)
 
 
-def import_insurers_csv(text: str) -> tuple[int, int, list[str]]:
-    """Upsert by name. Columns: name, solvit_company_id, aliases (optional), active (optional)."""
-    added = updated = 0
-    problems = []
-    reader = csv.DictReader(io.StringIO(text))
-    fields = {(f or "").strip().lower(): f for f in reader.fieldnames or []}
-    if "name" not in fields or "solvit_company_id" not in fields:
-        return 0, 0, ["The CSV needs at least the columns: name, solvit_company_id"]
-
-    for line_no, row in enumerate(reader, start=2):
-        get = lambda col: (row.get(fields.get(col, ""), "") or "").strip()  # noqa: E731
-        name, company_id = get("name"), get("solvit_company_id")
-        if not name or not company_id:
-            problems.append(f"Line {line_no}: missing name or ID, skipped")
-            continue
-        insurer = Insurer.query.filter(func.lower(Insurer.name) == name.lower()).first()
-        if insurer:
-            updated += 1
-        else:
-            insurer = Insurer(name=name)
-            db.session.add(insurer)
-            added += 1
-        insurer.solvit_company_id = company_id
-        if "aliases" in fields:
-            insurer.aliases = get("aliases")
-        active = get("active").lower()
-        insurer.active = active not in ("0", "false", "no", "n")
-    db.session.commit()
-    return added, updated, problems
-
 
 @admin_bp.post("/insurers/import")
 @login_required
 def insurers_import():
     f = request.files.get("file")
-    if not f:
-        flash("Choose a CSV file to import.")
+    if not f or not f.filename:
+        flash("Choose an Excel or CSV file to import.")
         return redirect("/admin/insurers")
-    added, updated, problems = import_insurers_csv(f.read().decode("utf-8-sig", errors="replace"))
+    try:
+        rows = insurers.read_rows(f.filename, f.read())
+    except Exception:
+        flash("Couldn't read that file. Upload the insurer master .xlsx or a .csv.")
+        return redirect("/admin/insurers")
+    added, updated, problems = insurers.upsert(rows)
     flash(f"Imported insurers: {added} added, {updated} updated.")
     for p in problems:
         flash(p)

@@ -17,7 +17,7 @@
   {% else %}
     <div class="alert alert-info">
       <h2 class="mb-3">Request received</h2>
-      <p class="mb-0">Thank you, {{ req.first_name }}. Our team is giving your documents a quick check and will contact you on {{ req.phone }} shortly. There's nothing to pay.</p>
+      <p class="mb-0">Thank you, {{ req.first_name }}. Our team is giving your documents a quick check and will contact you on {{ req.phone }} or {{ req.email }} shortly. There's nothing to pay.</p>
     </div>
   {% endif %}
 

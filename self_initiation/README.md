@@ -10,7 +10,7 @@ repository root.
 ## Client journey
 
 1. SMS link opens `/self-initiate` (add `?src=sms-reminder` or similar to tag the campaign).
-2. **Step 1:** upload the insurer's instruction letter and the logbook, then enter name and phone (email is optional).
+2. **Step 1:** upload the insurer's instruction letter and the logbook, then enter name, phone and email (all required).
 3. The logbook is read only to pre-fill the plate. The letter is read for insurer name, date, reg and reference.
 4. **Step 2:** confirm the reg and pick the insurer (pre-selected from the letter when possible).
    Location (Google Places search) and preferred time are optional.
@@ -36,12 +36,14 @@ it is one line in `services/solvit.py` (`build_payload`).
 - **Requests:** tabs for held, initiated, send failed, rejected and abandoned drafts. Opening a request shows
   what was read off the letter, why it was held and both documents inline. Staff can correct the reg or
   insurer, then **Approve and create job in Solvit** (also the retry for failed sends) or **Reject**.
-- **Insurers:** the list behind the client dropdown. Import a CSV with
-  `name,solvit_company_id,aliases,active` (see `data/insurers_template.csv`). Rows are upserted by name, and
-  each insurer can be edited or deactivated inline.
+- **Insurers:** the list behind the client dropdown. Upload the Solvit insurer master export (`.xlsx` with
+  `id, name, email`) as it is, or a CSV with `name,solvit_company_id,aliases,active`. The `id` column is what
+  goes to Solvit as `insuranceCompanyRequestId`, and the contact email column is ignored. Rows are upserted by
+  name, so re-importing is safe, and each insurer can be edited or deactivated inline.
 
-Documents are stored in the database rather than on disk, so they survive redeploys. The Solvit job comment
-includes a link to the request's admin page, so the back office can open the proof from the job.
+Documents are stored in the database rather than on disk, so they survive redeploys. Solvit only accepts
+attachments when a job is initiated on its dashboard, not through the API, so the job comment carries a link
+to the request's admin page instead and the back office opens the proof from there.
 
 ## Run locally
 
@@ -58,6 +60,16 @@ Tests (no network or API keys needed):
 pip install pytest && python -m pytest tests
 ```
 
+## Staging and production
+
+| | Staging | Production |
+|---|---|---|
+| `SOLVIT_BASE_URL` | `https://solvit.staging9.com` | `https://login.solvit.limited` |
+| Insurers | `INSURERS_SEED_FILE=data/insurers_staging.csv` loads the staging list into an empty database | Leave the seed unset and import the production master `.xlsx` in Admin |
+| `SOLVIT_USERNAME` / `SOLVIT_PASSWORD` | Self-Initiate broker alias | Self-Initiate broker alias |
+
+`data/insurers_staging.csv` is the staging insurer master with the contact emails removed.
+
 ## Deploy
 
 On Render, go to New, then Blueprint, and point it at `self_initiation/render.yaml`. That creates the web
@@ -69,8 +81,8 @@ restrict which sites may embed it.
 
 | Item | Where it plugs in |
 |------|-------------------|
-| Self-Initiate broker alias credentials | `SOLVIT_USERNAME`, `SOLVIT_PASSWORD` |
-| Insurer list with Solvit company IDs | Admin, then Insurers, then Import CSV |
-| Payment type for insurer-paid jobs (assumed `1`) | `SOLVIT_PAYMENT_TYPE` |
-| Whether Solvit accepts document attachments | For now only a link goes in the job comment |
+| Solvit login endpoint URL | `SOLVIT_AUTH_URL` |
+| Production insurer list | Admin, then Insurers, then Import |
 | Who owns the held-request queue | Admin access via `ADMIN_PASSWORD` |
+
+Settled: broker alias created, payment type stays `1`, documents cannot go through the API.

@@ -31,6 +31,17 @@ def test_letterhead_variants_match_dropdown():
     assert insurer_matches(GA, ALL, "GA Insurance Limited")
 
 
+def test_staging_names_match_typical_letterheads():
+    staging = [Ins(58, "Jubilee Alliance General KE"), Ins(44, "Kenya Orient Test"),
+               Ins(83, "Geminia Insurance Company Limited"), Ins(71, "KENINDIA ASSURANCE COMPANY LTD"),
+               Ins(18, "ICEA Lion")]
+    assert insurer_matches(staging[0], staging, "Jubilee Allianz General Insurance (Kenya) Limited")
+    assert insurer_matches(staging[2], staging, "GEMINIA INSURANCE CO. LTD")
+    assert insurer_matches(staging[3], staging, "Kenindia Assurance Co. Ltd")
+    assert insurer_matches(staging[4], staging, "ICEA LION General Insurance Company Limited")
+    assert not insurer_matches(staging[4], staging, "Geminia Insurance")
+
+
 def test_wrong_insurer_does_not_match():
     assert not insurer_matches(APA, ALL, "Britam General Insurance")
     assert not insurer_matches(GA, ALL, "APA Insurance")

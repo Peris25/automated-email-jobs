@@ -68,8 +68,8 @@ def upload():
         errors.append("Please enter your first and last name.")
     if not phone:
         errors.append("Please enter a valid Kenyan mobile number, e.g. 0712 345 678.")
-    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-        errors.append("That email address doesn't look right. You can also leave it blank.")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        errors.append("Please enter a valid email address.")
 
     letter = read_upload("letter")
     logbook = read_upload("logbook")
@@ -88,7 +88,7 @@ def upload():
         source=session.get("source"),
         first_name=first_name,
         last_name=last_name,
-        email=email or None,
+        email=email,
         phone=phone,
         letter_sha256=hashlib.sha256(letter[0]).hexdigest(),
     )

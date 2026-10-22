@@ -14,9 +14,9 @@ import requests
 
 log = logging.getLogger(__name__)
 
-SOLVIT_API_URL = os.getenv(
-    "SOLVIT_API_URL", "https://login.solvit.limited/api/request/schedule-initiate-request"
-)
+# Staging: https://solvit.staging9.com   Production: https://login.solvit.limited
+SOLVIT_BASE_URL = os.getenv("SOLVIT_BASE_URL", "https://login.solvit.limited").rstrip("/")
+SOLVIT_API_URL = os.getenv("SOLVIT_API_URL") or f"{SOLVIT_BASE_URL}/api/request/schedule-initiate-request"
 TIMEOUT = 30
 
 
@@ -51,7 +51,7 @@ def build_payload(req, docs_url: str = "") -> dict:
         "vehicleRegNo": req.reg,
         "firstName": req.first_name,
         "lastName": req.last_name,
-        "email": req.email or "",
+        "email": req.email,
         "type": "2",
         "siteType": "2",
         "insuranceCompanyRequestId": req.insurer.solvit_company_id,
